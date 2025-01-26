@@ -4,12 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DeepSeek Chat</title>
-    
-    <!-- Font Awesome + Tailwind CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Stiluri Complete -->
     <style>
         :root {
             --neon-blue: #64ffff;
@@ -26,6 +22,15 @@
             touch-action: none;
         }
 
+        #background-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
         .chat-container {
             position: fixed;
             top: 20px;
@@ -39,6 +44,7 @@
             box-shadow: 0 0 40px rgba(100, 255, 255, 0.1);
             display: flex;
             flex-direction: column;
+            z-index: 1;
         }
 
         .chat-header {
@@ -122,7 +128,6 @@
             box-shadow: 0 0 20px rgba(100, 255, 255, 0.3);
         }
 
-        /* Scrollbar Custom */
         #chatbox::-webkit-scrollbar {
             width: 6px;
         }
@@ -134,8 +139,9 @@
     </style>
 </head>
 <body>
+    <canvas id="background-canvas"></canvas>
+
     <div class="chat-container">
-        <!-- Header -->
         <div class="chat-header">
             <h1 class="text-2xl font-bold text-[#64ffff]">
                 <i class="fas fa-robot mr-2"></i>
@@ -143,12 +149,10 @@
             </h1>
         </div>
 
-        <!-- Zona Mesaje -->
         <div id="chatbox">
             <div class="message bot">Bună! Sunt un AI creat de DeepSeek. Cum te pot ajuta astăzi? 🌟</div>
         </div>
 
-        <!-- Input Mesaj -->
         <div class="input-area">
             <input type="text" id="userInput" placeholder="Scrie mesajul tău...">
             <button id="sendButton">
@@ -157,14 +161,115 @@
         </div>
     </div>
 
-    <!-- Script Functional -->
     <script>
-        // Elemente principale
+        class Particle {
+            constructor(canvas, ctx) {
+                this.canvas = canvas;
+                this.ctx = ctx;
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.velocity = {
+                    x: (Math.random() - 0.5) * 0.5,
+                    y: (Math.random() - 0.5) * 0.5
+                };
+                this.radius = Math.random() * 2;
+                this.baseRadius = this.radius;
+                this.color = `rgba(100, 255, 255, ${Math.random() * 0.5})`;
+            }
+
+            draw() {
+                this.ctx.beginPath();
+                this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                this.ctx.fillStyle = this.color;
+                this.ctx.fill();
+            }
+
+            update(mouse) {
+                if (mouse.x && mouse.y) {
+                    const dx = mouse.x - this.x;
+                    const dy = mouse.y - this.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const force = (mouse.radius || 50) / distance;
+
+                    if (distance < mouse.radius) {
+                        this.x -= force * dx;
+                        this.y -= force * dy;
+                    }
+                }
+
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+
+                if (this.x < 0 || this.x > this.canvas.width) this.velocity.x *= -1;
+                if (this.y < 0 || this.y > this.canvas.height) this.velocity.y *= -1;
+
+                this.radius = this.baseRadius + Math.sin(Date.now() * 0.01) * 0.5;
+            }
+        }
+
+        const canvas = document.getElementById('background-canvas');
+        const ctx = canvas.getContext('2d');
+        const particles = [];
+        const mouse = { x: null, y: null, radius: 70 };
+
+        function init() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            for (let i = 0; i < 150; i++) {
+                particles.push(new Particle(canvas, ctx));
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            particles.forEach((p1, i) => {
+                p1.draw();
+                p1.update(mouse);
+                
+                particles.slice(i).forEach(p2 => {
+                    const dx = p1.x - p2.x;
+                    const dy = p1.y - p2.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < 100) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(100, 255, 255, ${0.3 - distance/100})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                    }
+                });
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.x;
+            mouse.y = e.y;
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            mouse.x = e.touches[0].clientX;
+            mouse.y = e.touches[0].clientY;
+        });
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            init();
+        });
+
+        init();
+        animate();
+
         const chatbox = document.getElementById('chatbox');
         const userInput = document.getElementById('userInput');
         const sendButton = document.getElementById('sendButton');
 
-        // Adăugare mesaj
         function addMessage(text, isUser) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
@@ -173,7 +278,6 @@
             chatbox.scrollTop = chatbox.scrollHeight;
         }
 
-        // Trimite mesaj la API
         async function sendMessage() {
             const prompt = userInput.value.trim();
             if (!prompt) return;
@@ -195,13 +299,11 @@
             }
         }
 
-        // Evenimente
         sendButton.addEventListener('click', sendMessage);
         userInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMessage();
         });
 
-        // Blocare Scroll pe Mobil
         let isTouchingChat = false;
         chatbox.addEventListener('touchstart', () => isTouchingChat = true);
         chatbox.addEventListener('touchend', () => isTouchingChat = false);
