@@ -1,4 +1,3 @@
-// File: /api/chat.js
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -11,14 +10,19 @@ export default async function handler(req, res) {
     }
 
     try {
-       const response = await fetch('https://deepscek-flax.vercel.app/api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt: userMessage }),
-});
-
-                prompt: prompt,
-                max_tokens: 150,
+        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${process.env.API_KEY}`, // Cheia API din variabilele de mediu
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model: 'deepseek-chat', // Specifică modelul
+                messages: [
+                    { role: 'system', content: 'You are a helpful assistant.' },
+                    { role: 'user', content: prompt },
+                ],
+                stream: false,
             }),
         });
 
