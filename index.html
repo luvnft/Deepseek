@@ -3,180 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chatbot Futuristic</title>
-    
-    <!-- Biblioteci Externe -->
+    <title>Beauty Assistant</title>
+    <!-- Tailwind CSS + Font Awesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
-    <!-- Stiluri Custom -->
+    <!-- Stiluri Integrate -->
     <style>
-        body {
-            margin: 0;
-            min-height: 100vh;
-            background: linear-gradient(45deg, #0a0a1a, #1a1a3a, #0a0a1a);
-            font-family: 'Segoe UI', sans-serif;
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* Efect Particule */
-        body::before {
-            content: "";
-            position: absolute;
-            width: 300%;
-            height: 300%;
-            background: radial-gradient(circle, rgba(100,255,255,0.1) 0%, transparent 70%);
-            animation: particle-move 20s linear infinite;
-            z-index: 0;
-        }
-
-        @keyframes particle-move {
-            from { transform: translate(-50%, -50%) rotate(0deg); }
-            to { transform: translate(-50%, -50%) rotate(360deg); }
-        }
-
-        /* Container Chat */
         .chat-container {
-            position: relative;
-            background: rgba(16, 16, 32, 0.8);
+            background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
-            border-radius: 20px;
-            border: 1px solid rgba(100, 255, 255, 0.2);
-            box-shadow: 0 0 30px rgba(100,255,255,0.1),
-                        inset 0 0 15px rgba(100,255,255,0.05);
-            width: 90%;
-            max-width: 800px;
-            margin: 2rem auto;
-            overflow: hidden;
-            z-index: 1;
+            box-shadow: 0 8px 32px rgba(149, 77, 229, 0.1);
         }
-
-        /* Mesaje */
         .message {
-            position: relative;
+            animation: fadeIn 0.3s;
             max-width: 80%;
-            padding: 1.2rem;
-            margin: 1rem 0;
-            border-radius: 15px;
-            animation: messageAppear 0.4s ease-out;
-            backdrop-filter: blur(5px);
+            margin: 10px 0;
         }
-
-        .message.user {
-            background: linear-gradient(45deg, rgba(100,150,255,0.15), rgba(100,200,255,0.1));
-            border: 1px solid rgba(100,255,255,0.15);
-            margin-left: auto;
-            color: #c8ffff;
-        }
-
-        .message.bot {
-            background: linear-gradient(45deg, rgba(32,32,64,0.3), rgba(16,16,32,0.2));
-            border: 1px solid rgba(100,255,255,0.1);
-            color: #e0e0ff;
-        }
-
-        @keyframes messageAppear {
-            from { opacity: 0; transform: translateY(20px); }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
-        /* Input */
-        #userInput {
-            background: rgba(8, 8, 16, 0.6);
-            border: 1px solid rgba(100,255,255,0.2);
-            color: #c8ffff;
-            padding: 1rem;
-            border-radius: 12px;
-            transition: all 0.3s ease;
+        #chatbox::-webkit-scrollbar {
+            width: 6px;
+            background: #f1f5f9;
         }
-
-        #userInput:focus {
-            border-color: #64ffff;
-            box-shadow: 0 0 15px rgba(100,255,255,0.2);
-        }
-
-        /* Buton */
-        #sendButton {
-            background: linear-gradient(135deg, #64ffff, #3264ff);
-            border: none;
-            padding: 0.8rem 1.5rem;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        #sendButton:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 20px rgba(100,255,255,0.3);
+        #chatbox::-webkit-scrollbar-thumb {
+            background: #c084fc;
+            border-radius: 4px;
         }
     </style>
 </head>
-<body>
-    <div class="chat-container">
-        <!-- Header -->
-        <div class="p-6 bg-gradient-to-r from-[#101020] to-[#202040] border-b border-[#64ffff33]">
-            <h1 class="text-2xl font-bold text-[#64ffff] flex items-center gap-3">
-                <i class="fas fa-robot text-[#64ffff]"></i>
-                DEEPSEEK AI
-            </h1>
-        </div>
+<body class="bg-gradient-to-br from-pink-50 to-purple-100 min-h-screen flex items-center justify-center">
+    <div class="w-full max-w-2xl mx-4">
+        <div class="chat-container rounded-xl shadow-xl">
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6 rounded-t-xl">
+                <h1 class="text-2xl font-bold flex items-center gap-3">
+                    <i class="fas fa-spa"></i>
+                    Beauty Assistant
+                </h1>
+            </div>
 
-        <!-- Zona de Chat -->
-        <div id="chatbox" class="h-96 p-6 overflow-y-auto bg-[#08081066]">
-            <div class="message bot">Bună! Sunt un AI creat de DeepSeek. Cu ce te pot ajuta astăzi? 🌟</div>
-        </div>
+            <!-- Mesaje -->
+            <div id="chatbox" class="h-96 p-4 overflow-y-auto">
+                <div class="message bot bg-gray-100 p-4 rounded-lg mb-3">
+                    Bună! Sunt asistentul tău virtual. Cum te pot ajuta astăzi? 💅
+                </div>
+            </div>
 
-        <!-- Input -->
-        <div class="p-6 bg-[#101020b3] border-t border-[#64ffff33] flex gap-3">
-            <input id="userInput" type="text" placeholder="Scrie mesajul tău..." class="flex-1">
-            <button id="sendButton" class="text-white">
-                <i class="fas fa-paper-plane"></i>
-            </button>
+            <!-- Input -->
+            <div class="p-4 border-t flex gap-2">
+                <input id="userInput" type="text" placeholder="Scrie mesajul tău..." 
+                       class="flex-1 p-3 border rounded-lg focus:ring-2 focus:ring-purple-500">
+                <button id="sendButton" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
         </div>
     </div>
 
-    <!-- Scripturi -->
-    <script>
+    <!-- Script Integrat -->
+    <script type="module">
+        // Configurare Firebase
+        const firebaseConfig = {
+            apiKey: "YOUR_FIREBASE_API_KEY",
+            projectId: "YOUR_PROJECT_ID",
+            // ... alte configurări
+        };
+        
+        // Funcții Chat
         const chatbox = document.getElementById('chatbox');
         const userInput = document.getElementById('userInput');
         const sendButton = document.getElementById('sendButton');
 
-        // Adăugare mesaj
         function addMessage(text, isUser) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
-            messageDiv.textContent = text;
-            chatbox.appendChild(messageDiv);
+            const div = document.createElement('div');
+            div.className = `message ${isUser ? 'user bg-purple-100 ml-auto' : 'bot bg-gray-100'} p-4 rounded-lg`;
+            div.textContent = text;
+            chatbox.appendChild(div);
             chatbox.scrollTop = chatbox.scrollHeight;
         }
 
-        // Trimite cerere la API
-        async function sendMessage() {
-            const prompt = userInput.value.trim();
-            if (!prompt) return;
-
-            addMessage(prompt, true);
-            userInput.value = '';
-
+        async function sendToAPI(prompt) {
             try {
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ prompt })
                 });
-                
-                const data = await response.json();
-                addMessage(data.reply, false);
-            } catch (error) {
-                addMessage('⚠️ Eroare de conexiune cu serverul', false);
+                return await response.json();
+            } catch(error) {
+                return { reply: "⚠️ Eroare de conexiune" };
             }
         }
 
-        // Evenimente
-        sendButton.addEventListener('click', sendMessage);
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
+        sendButton.addEventListener('click', async () => {
+            const text = userInput.value.trim();
+            if(!text) return;
+            
+            addMessage(text, true);
+            userInput.value = '';
+            
+            const { reply } = await sendToAPI(text);
+            addMessage(reply, false);
         });
     </script>
 </body>
