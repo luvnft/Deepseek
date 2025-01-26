@@ -21,7 +21,7 @@ async function sendMessage() {
 
     try {
         const response = await fetch('https://api.deepseek.com/v1/chat', {
-            method: 'POST',
+            method: 'no-cors',
             headers: {
                 'Authorization': 'Bearer sk-6979331d22bf4934a5c5dcff4903d843',
                 'Content-Type': 'application/json'
