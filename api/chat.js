@@ -1,6 +1,6 @@
 export default async (req, res) => {
     try {
-        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        const apiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
@@ -9,7 +9,10 @@ export default async (req, res) => {
             body: JSON.stringify({
                 model: 'deepseek-chat',
                 messages: [
-                    { role: 'system', content: 'Răspunde în română. Folosește emoji-uri și un stil prietenos.' },
+                    { 
+                        role: 'system', 
+                        content: 'Răspunde în română. Folosește un stil prietenos și emoji-uri când este potrivit.'
+                    },
                     { role: 'user', content: req.body.prompt }
                 ],
                 temperature: 0.7,
@@ -17,7 +20,7 @@ export default async (req, res) => {
             })
         });
 
-        const data = await response.json();
+        const data = await apiResponse.json();
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.status(200).json({ reply: data.choices[0].message.content });
     } catch (error) {
