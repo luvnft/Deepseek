@@ -1,6 +1,6 @@
 export default async (req, res) => {
     try {
-        const apiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
@@ -9,17 +9,18 @@ export default async (req, res) => {
             body: JSON.stringify({
                 model: 'deepseek-chat',
                 messages: [
-                    { role: 'system', content: 'Răspunde în română.' },
+                    { role: 'system', content: 'Răspunde în română. Folosește emoji-uri și un stil prietenos.' },
                     { role: 'user', content: req.body.prompt }
                 ],
-                temperature: 0.7
+                temperature: 0.7,
+                max_tokens: 500
             })
         });
 
-        const data = await apiResponse.json();
+        const data = await response.json();
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.status(200).json({ reply: data.choices[0].message.content });
     } catch (error) {
-        res.status(500).json({ reply: 'Eroare internă' });
+        res.status(500).json({ reply: 'Eroare internă a serverului' });
     }
 };
