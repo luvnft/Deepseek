@@ -1,278 +1,331 @@
 <!DOCTYPE html>
 <html lang="ro">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Salon Stelmina Chatbot</title>
-    
-    <!-- Tailwind CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
-    <!-- Firebase (compat mode) -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
-    
-    <style>
-        body {
-            margin: 0;
-            min-height: 100vh;
-            background: linear-gradient(45deg, #0a0a1a, #1a1a3a, #0a0a1a);
-            font-family: 'Segoe UI', sans-serif;
-            overflow: hidden;
-            position: relative;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Salon Stelmina Chatbot</title>
+  
+  <!-- Tailwind CSS (CDN) -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  
+  <!-- Font Awesome (CDN) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  
+  <!-- Firebase (compat mode) -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+  
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(45deg, #0a0a1a, #1a1a3a, #0a0a1a);
+      font-family: 'Segoe UI', sans-serif;
+      /* Eliminăm overflow: hidden, ca să putem derula pagina normal */
+      position: relative;
+    }
 
-        body::before {
-            content: "";
-            position: absolute;
-            width: 300%;
-            height: 300%;
-            background: radial-gradient(circle, rgba(100,255,255,0.1) 0%, transparent 70%);
-            animation: particle-move 20s linear infinite;
-            z-index: 0;
-        }
+    body::before {
+      content: "";
+      position: absolute;
+      width: 300%;
+      height: 300%;
+      background: radial-gradient(circle, rgba(100,255,255,0.1) 0%, transparent 70%);
+      animation: particle-move 20s linear infinite;
+      z-index: 0;
+      top: -100%;
+      left: -100%;
+    }
 
-        @keyframes particle-move {
-            from { transform: translate(-50%, -50%) rotate(0deg); }
-            to { transform: translate(-50%, -50%) rotate(360deg); }
-        }
+    @keyframes particle-move {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
 
-        .chat-container {
-            position: relative;
-            background: rgba(16, 16, 32, 0.8);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            border: 1px solid rgba(100, 255, 255, 0.2);
-            box-shadow: 0 0 30px rgba(100,255,255,0.1),
-                        inset 0 0 15px rgba(100,255,255,0.05);
-            width: 90%;
-            max-width: 800px;
-            margin: 2rem auto;
-            overflow: hidden;
-            z-index: 1;
-        }
+    .chat-container {
+      position: relative;
+      background: rgba(16, 16, 32, 0.8);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      border: 1px solid rgba(100, 255, 255, 0.2);
+      box-shadow: 0 0 30px rgba(100,255,255,0.1),
+                  inset 0 0 15px rgba(100,255,255,0.05);
+      width: 90%;
+      max-width: 800px;
+      margin: 2rem auto;
+      overflow: hidden;
+      z-index: 1;
+    }
 
-        .message {
-            position: relative;
-            max-width: 80%;
-            padding: 1.2rem;
-            margin: 1rem 0;
-            border-radius: 15px;
-            animation: messageAppear 0.4s ease-out;
-            backdrop-filter: blur(5px);
-        }
+    .message {
+      position: relative;
+      max-width: 80%;
+      padding: 1.2rem;
+      margin: 1rem 0;
+      border-radius: 15px;
+      animation: messageAppear 0.4s ease-out;
+      backdrop-filter: blur(5px);
+      word-wrap: break-word;
+    }
 
-        .message.user {
-            background: linear-gradient(45deg, rgba(100,150,255,0.15), rgba(100,200,255,0.1));
-            border: 1px solid rgba(100,255,255,0.15);
-            margin-left: auto;
-            color: #c8ffff;
-        }
+    .message.user {
+      background: linear-gradient(45deg, rgba(100,150,255,0.15), rgba(100,200,255,0.1));
+      border: 1px solid rgba(100,255,255,0.15);
+      margin-left: auto;
+      color: #c8ffff;
+    }
 
-        .message.bot {
-            background: linear-gradient(45deg, rgba(32,32,64,0.3), rgba(16,16,32,0.2));
-            border: 1px solid rgba(100,255,255,0.1);
-            color: #e0e0ff;
-        }
+    .message.bot {
+      background: linear-gradient(45deg, rgba(32,32,64,0.3), rgba(16,16,32,0.2));
+      border: 1px solid rgba(100,255,255,0.1);
+      color: #e0e0ff;
+    }
 
-        @keyframes messageAppear {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+    @keyframes messageAppear {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
-        #userInput {
-            background: rgba(8, 8, 16, 0.6);
-            border: 1px solid rgba(100,255,255,0.2);
-            color: #c8ffff;
-            padding: 1rem;
-            border-radius: 12px;
-            transition: all 0.3s ease;
-        }
+    #chatbox {
+      height: 480px; /* Poți ajusta această înălțime cum dorești */
+      overflow-y: auto;
+    }
 
-        #userInput:focus {
-            border-color: #64ffff;
-            box-shadow: 0 0 15px rgba(100,255,255,0.2);
-        }
+    #userInput {
+      background: rgba(8, 8, 16, 0.6);
+      border: 1px solid rgba(100,255,255,0.2);
+      color: #c8ffff;
+      padding: 1rem;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      width: 100%;
+      outline: none;
+    }
 
-        #sendButton {
-            background: linear-gradient(135deg, #64ffff, #3264ff);
-            border: none;
-            padding: 0.8rem 1.5rem;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
+    #userInput:focus {
+      border-color: #64ffff;
+      box-shadow: 0 0 15px rgba(100,255,255,0.2);
+    }
 
-        #sendButton:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 20px rgba(100,255,255,0.3);
-        }
-    </style>
+    #sendButton {
+      background: linear-gradient(135deg, #64ffff, #3264ff);
+      border: none;
+      padding: 0.8rem 1.5rem;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      color: white;
+      outline: none;
+    }
+
+    #sendButton:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(100,255,255,0.3);
+    }
+  </style>
 </head>
 <body>
-    <div class="chat-container">
-        <!-- Header -->
-        <div class="p-6 bg-gradient-to-r from-[#101020] to-[#202040] border-b border-[#64ffff33]">
-            <h1 class="text-2xl font-bold text-[#64ffff] flex items-center gap-3">
-                <i class="fas fa-robot text-[#64ffff]"></i>
-                Salon Stelmina
-            </h1>
-        </div>
-
-        <!-- Zona de Chat -->
-        <div id="chatbox" class="h-96 p-6 overflow-y-auto bg-[#08081066]">
-            <div class="message bot">Bună! Sunt asistentul virtual al salonului Stelmina. Cu ce te pot ajuta astăzi? 🌟</div>
-        </div>
-
-        <!-- Input -->
-        <div class="p-6 bg-[#101020b3] border-t border-[#64ffff33] flex gap-3">
-            <input id="userInput" type="text" placeholder="Scrie mesajul tău..." class="flex-1">
-            <button id="sendButton" class="text-white">
-                <i class="fas fa-paper-plane"></i>
-            </button>
-        </div>
+  <div class="chat-container">
+    <!-- Header -->
+    <div class="p-6 bg-gradient-to-r from-[#101020] to-[#202040] border-b border-[#64ffff33]">
+      <h1 class="text-2xl font-bold text-[#64ffff] flex items-center gap-3">
+        <i class="fas fa-robot text-[#64ffff]"></i>
+        Salon Stelmina
+      </h1>
     </div>
 
-    <script>
-        // Configurare Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyBahkhy2GgUW2wM5dxghoVt2bv0-6ZyWqQ",
-            authDomain: "restaurantapp-d0256.firebaseapp.com",
-            projectId: "restaurantapp-d0256",
-            storageBucket: "restaurantapp-d0256.appspot.com",
-            messagingSenderId: "275208346650",
-            appId: "1:275208346650:web:30f21698afaeb3919945a3",
-            measurementId: "G-X0H5WP9NX1"
-        };
+    <!-- Zona de Chat -->
+    <div id="chatbox" class="p-6 bg-[#08081066]">
+      <!-- Mesaj inițial din partea “botului” -->
+      <div class="message bot">
+        Bună, Vlad! Sunt asistentul virtual al salonului Stelmina. 
+        <br/>
+        Cu ce te pot ajuta astăzi? 🌟 
+        <br/>
+        (Și apropo, din când în când o să te întreb cum te simți, doar să fiu sigur că ești bine!)
+      </div>
+    </div>
 
-        // Inițializare Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+    <!-- Input -->
+    <div class="p-6 bg-[#101020b3] border-t border-[#64ffff33] flex gap-3">
+      <input id="userInput" type="text" placeholder="Scrie mesajul tău..." />
+      <button id="sendButton">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </div>
+  </div>
 
-        // Elemente DOM
-        const chatbox = document.getElementById('chatbox');
-        const userInput = document.getElementById('userInput');
-        const sendButton = document.getElementById('sendButton');
+  <script>
+    // ===============================
+    //  Configurare Firebase
+    // ===============================
+    const firebaseConfig = {
+      apiKey: "AIzaSyBahkhy2G-UW2wM5dxghoVt2bv0-6ZyWqQ",
+      authDomain: "restaurantapp-d0256.firebaseapp.com",
+      projectId: "restaurantapp-d0256",
+      storageBucket: "restaurantapp-d0256.appspot.com",
+      messagingSenderId: "275208346650",
+      appId: "1:275208346650:web:30f21698afaeb3919945a3",
+      measurementId: "G-X0H5WP9NX1"
+    };
 
-        // Adăugare mesaj
-        function addMessage(text, isUser) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
-            messageDiv.textContent = text;
-            chatbox.appendChild(messageDiv);
-            chatbox.scrollTop = chatbox.scrollHeight;
-        }
+    // Inițializare Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-        // Verifică disponibilitatea
-        async function checkDisponibilitate(data, ora, cosmeticianaId) {
-            const query = db.collection("programari")
-                .where("data", "==", data)
-                .where("ora", "==", ora)
-                .where("cosmeticianaId", "==", cosmeticianaId);
-            
-            const snapshot = await query.get();
-            return snapshot.empty;
-        }
+    // ===============================
+    //  Elemente DOM
+    // ===============================
+    const chatbox = document.getElementById('chatbox');
+    const userInput = document.getElementById('userInput');
+    const sendButton = document.getElementById('sendButton');
 
-        // Crează programare
-        async function createProgramare(client, telefon, data, ora, tratamentId, cosmeticianaId) {
-            await db.collection("programari").add({
-                client,
-                telefon,
-                data,
-                ora,
-                tratamentId,
-                cosmeticianaId,
-                status: "confirmată"
-            });
-        }
+    // ===============================
+    //  Funcții pentru mesaje
+    // ===============================
+    function addMessage(text, isUser) {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+      messageDiv.textContent = text;
+      chatbox.appendChild(messageDiv);
+      chatbox.scrollTop = chatbox.scrollHeight; // Derulează jos
+    }
 
-        // Detectează intenția
-        async function detectIntent(text) {
-            try {
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: `Clasifică mesajul în 'programare' sau 'recomandare': "${text}"` })
-                });
-                const data = await response.json();
-                return data.reply.toLowerCase().includes('programare') ? 'programare' : 'recomandare';
-            } catch (error) {
-                return 'recomandare';
-            }
-        }
+    // ===============================
+    //  Funcții de disponibilitate & programare
+    // ===============================
+    async function checkDisponibilitate(data, ora, cosmeticianaId) {
+      // Verifică în colecția "programari" dacă există deja o programare cu datele date
+      const query = db.collection("programari")
+        .where("data", "==", data)
+        .where("ora", "==", ora)
+        .where("cosmeticianaId", "==", cosmeticianaId);
 
-        // Gestionează programarea
-        async function handleAppointment(userMessage) {
-            try {
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        prompt: `Extrage JSON cu "data", "ora", "tratament" și "cosmeticianaId" din: "${userMessage}"`
-                    })
-                });
-                const details = await response.json();
+      const snapshot = await query.get();
+      return snapshot.empty; // true dacă nu e nimic => e liber
+    }
 
-                const disponibil = await checkDisponibilitate(details.data, details.ora, details.cosmeticianaId);
-                if (disponibil) {
-                    await createProgramare("Client Nou", "0722...", details.data, details.ora, details.tratament, details.cosmeticianaId);
-                    return `✅ Programare confirmată pentru ${details.data} la ${details.ora}.`;
-                } else {
-                    return "⚠️ Slot ocupat. Vă recomandăm altă oră.";
-                }
-            } catch (error) {
-                return "⚠️ Eroare la procesare.";
-            }
-        }
+    async function createProgramare(client, telefon, data, ora, tratamentId, cosmeticianaId) {
+      // Creează o programare în Firebase
+      await db.collection("programari").add({
+        client,
+        telefon,
+        data,
+        ora,
+        tratamentId,
+        cosmeticianaId,
+        status: "confirmată"
+      });
+    }
 
-        // Răspunde la întrebări generale
-        async function handleGeneralQuery(userMessage) {
-            try {
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: userMessage })
-                });
-                const data = await response.json();
-                return data.reply;
-            } catch (error) {
-                return "⚠️ Nu pot răspunde acum.";
-            }
-        }
-
-        // Trimite mesaj
-        async function sendMessage() {
-            const userMessage = userInput.value.trim();
-            if (!userMessage) return;
-
-            addMessage(userMessage, true);
-            userInput.value = '';
-
-            try {
-                const intent = await detectIntent(userMessage);
-                let reply;
-
-                if (intent === 'programare') {
-                    reply = await handleAppointment(userMessage);
-                } else {
-                    reply = await handleGeneralQuery(userMessage);
-                }
-
-                addMessage(reply, false);
-            } catch (error) {
-                addMessage("⚠️ Eroare de conexiune.", false);
-            }
-        }
-
-        // Evenimente
-        sendButton.addEventListener('click', sendMessage);
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
+    // ===============================
+    //  Detectare intenție (programare vs. recomandare)
+    // ===============================
+    async function detectIntent(text) {
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: `Clasifică mesajul în 'programare' sau 'recomandare': "${text}"`
+          })
         });
-    </script>
+        const data = await response.json();
+        // Dacă răspunsul conține "programare", ne întoarcem "programare", altfel "recomandare"
+        return data.reply.toLowerCase().includes('programare') ? 'programare' : 'recomandare';
+      } catch (error) {
+        console.error("Eroare la detectIntent:", error);
+        return 'recomandare';
+      }
+    }
+
+    // ===============================
+    //  Gestionează programarea
+    // ===============================
+    async function handleAppointment(userMessage) {
+      try {
+        // Obținem detaliile (data, ora etc.) printr-un request la /api/chat
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: `Extrage JSON cu "data", "ora", "tratament" și "cosmeticianaId" din: "${userMessage}"`
+          })
+        });
+        const details = await response.json();
+
+        // Verificăm disponibilitatea
+        const disponibil = await checkDisponibilitate(details.data, details.ora, details.cosmeticianaId);
+        if (disponibil) {
+          // Creăm programare (ex. date fixe de client)
+          await createProgramare("Client Nou", "0722...", details.data, details.ora, details.tratament, details.cosmeticianaId);
+          return `✅ Programare confirmată pentru ${details.data} la ${details.ora}.`;
+        } else {
+          return "⚠️ Ne pare rău, slotul este ocupat. Vă recomandăm o altă oră sau o altă zi.";
+        }
+
+      } catch (error) {
+        console.error("Eroare la handleAppointment:", error);
+        return "⚠️ A apărut o eroare la procesarea cererii de programare.";
+      }
+    }
+
+    // ===============================
+    //  Răspunde la întrebări generale
+    // ===============================
+    async function handleGeneralQuery(userMessage) {
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: userMessage })
+        });
+        const data = await response.json();
+        return data.reply;
+      } catch (error) {
+        console.error("Eroare la handleGeneralQuery:", error);
+        return "⚠️ Ne pare rău, nu putem răspunde în acest moment.";
+      }
+    }
+
+    // ===============================
+    //  Trimite mesajul
+    // ===============================
+    async function sendMessage() {
+      const userMessage = userInput.value.trim();
+      if (!userMessage) return;
+
+      // Adăugăm mesajul în chat (ca user)
+      addMessage(userMessage, true);
+      userInput.value = '';
+
+      try {
+        const intent = await detectIntent(userMessage);
+        let reply;
+
+        if (intent === 'programare') {
+          reply = await handleAppointment(userMessage);
+        } else {
+          reply = await handleGeneralQuery(userMessage);
+        }
+
+        // Adăugăm răspunsul botului
+        addMessage(reply, false);
+      } catch (error) {
+        addMessage("⚠️ Eroare de conexiune cu serverul.", false);
+      }
+    }
+
+    // ===============================
+    //  Evenimente
+    // ===============================
+    sendButton.addEventListener('click', sendMessage);
+
+    userInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+  </script>
 </body>
 </html>
