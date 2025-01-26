@@ -3,9 +3,13 @@ import { initializeApp } from "firebase/app";
 import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY,
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  // ... alte configurări
+  apiKey: "AIzaSyBahkhy2GgUW2wM5dxghoVt2bv0-6ZyWqQ",
+  authDomain: "restaurantapp-d0256.firebaseapp.com",
+  projectId: "restaurantapp-d0256",
+  storageBucket: "restaurantapp-d0256.firebasestorage.app",
+  messagingSenderId: "275208346650",
+  appId: "1:275208346650:web:30f21698afaeb3919945a3",
+  measurementId: "G-X0H5WP9NX1"
 };
 
 const app = initializeApp(firebaseConfig);
