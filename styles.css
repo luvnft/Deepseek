@@ -1,0 +1,28 @@
+/* Personalizări suplimentare */
+.chatbot-container {
+    height: 500px;
+    display: flex;
+    flex-direction: column;
+}
+
+#chatbox {
+    flex-grow: 1;
+    background-color: #f9fafb;
+}
+
+.message {
+    margin-bottom: 10px;
+    max-width: 75%;
+}
+
+.message.user {
+    background-color: #3b82f6;
+    color: white;
+    margin-left: auto;
+}
+
+.message.bot {
+    background-color: #e5e7eb;
+    color: black;
+    margin-right: auto;
+}
