@@ -3,270 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Salon Stelmina Chatbot</title>
-    
-    <!-- Tailwind CSS -->
+    <title>Salon Bot</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
-    <!-- Firebase (compat mode) -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
-    
-    <style>
-        body {
-            margin: 0;
-            min-height: 100vh;
-            background: linear-gradient(45deg, #0a0a1a, #1a1a3a, #0a0a1a);
-            font-family: 'Segoe UI', sans-serif;
-            overflow: hidden;
-            position: relative;
-        }
-
-        body::before {
-            content: "";
-            position: absolute;
-            width: 300%;
-            height: 300%;
-            background: radial-gradient(circle, rgba(100,255,255,0.1) 0%, transparent 70%);
-            animation: particle-move 20s linear infinite;
-            z-index: 0;
-        }
-
-        @keyframes particle-move {
-            from { transform: translate(-50%, -50%) rotate(0deg); }
-            to { transform: translate(-50%, -50%) rotate(360deg); }
-        }
-
-        .chat-container {
-            position: relative;
-            background: rgba(16, 16, 32, 0.8);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            border: 1px solid rgba(100, 255, 255, 0.2);
-            box-shadow: 0 0 30px rgba(100,255,255,0.1),
-                        inset 0 0 15px rgba(100,255,255,0.05);
-            width: 90%;
-            max-width: 800px;
-            margin: 2rem auto;
-            overflow: hidden;
-            z-index: 1;
-        }
-
-        .message {
-            position: relative;
-            max-width: 80%;
-            padding: 1.2rem;
-            margin: 1rem 0;
-            border-radius: 15px;
-            animation: messageAppear 0.4s ease-out;
-            backdrop-filter: blur(5px);
-        }
-
-        .message.user {
-            background: linear-gradient(45deg, rgba(100,150,255,0.15), rgba(100,200,255,0.1));
-            border: 1px solid rgba(100,255,255,0.15);
-            margin-left: auto;
-            color: #c8ffff;
-        }
-
-        .message.bot {
-            background: linear-gradient(45deg, rgba(32,32,64,0.3), rgba(16,16,32,0.2));
-            border: 1px solid rgba(100,255,255,0.1);
-            color: #e0e0ff;
-        }
-
-        @keyframes messageAppear {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        #userInput {
-            background: rgba(8, 8, 16, 0.6);
-            border: 1px solid rgba(100,255,255,0.2);
-            color: #c8ffff;
-            padding: 1rem;
-            border-radius: 12px;
-            transition: all 0.3s ease;
-        }
-
-        #userInput:focus {
-            border-color: #64ffff;
-            box-shadow: 0 0 15px rgba(100,255,255,0.2);
-        }
-
-        #sendButton {
-            background: linear-gradient(135deg, #64ffff, #3264ff);
-            border: none;
-            padding: 0.8rem 1.5rem;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        #sendButton:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 20px rgba(100,255,255,0.3);
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-    <div class="chat-container">
+<body class="bg-gradient-to-r from-purple-50 to-pink-50 min-h-screen flex items-center justify-center">
+    
+    <div class="chat-container bg-white rounded-2xl shadow-xl w-96">
         <!-- Header -->
-        <div class="p-6 bg-gradient-to-r from-[#101020] to-[#202040] border-b border-[#64ffff33]">
-            <h1 class="text-2xl font-bold text-[#64ffff] flex items-center gap-3">
-                <i class="fas fa-robot text-[#64ffff]"></i>
-                Salon Stelmina
+        <div class="chat-header bg-indigo-600 text-white p-4 rounded-t-2xl">
+            <h1 class="text-xl font-bold flex items-center gap-2">
+                <i class="fas fa-spa"></i>
+                Salon Assistant
             </h1>
         </div>
 
-        <!-- Zona de Chat -->
-        <div id="chatbox" class="h-96 p-6 overflow-y-auto bg-[#08081066]">
-            <div class="message bot">Bună! Sunt asistentul virtual al salonului Stelmina. Cu ce te pot ajuta astăzi? 🌟</div>
+        <!-- Mesaje -->
+        <div id="chatbox" class="h-96 p-4 overflow-y-auto">
+            <div class="message bot">Bună! Sunt asistentul virtual al salonului. Cum vă pot ajuta? 💅</div>
         </div>
 
         <!-- Input -->
-        <div class="p-6 bg-[#101020b3] border-t border-[#64ffff33] flex gap-3">
-            <input id="userInput" type="text" placeholder="Scrie mesajul tău..." class="flex-1">
-            <button id="sendButton" class="text-white">
+        <div class="p-4 border-t flex gap-2">
+            <input id="userInput" type="text" placeholder="Scrieți mesajul aici..." 
+                   class="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <button id="sendButton" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
                 <i class="fas fa-paper-plane"></i>
             </button>
         </div>
     </div>
 
-    <script>
-        // Configurare Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyBahkhy2GgUW2wM5dxghoVt2bv0-6ZyWqQ",
-            authDomain: "restaurantapp-d0256.firebaseapp.com",
-            projectId: "restaurantapp-d0256",
-            storageBucket: "restaurantapp-d0256.appspot.com",
-            messagingSenderId: "275208346650",
-            appId: "1:275208346650:web:30f21698afaeb3919945a3",
-            measurementId: "G-X0H5WP9NX1"
-        };
-
-        // Inițializare Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
-        // Elemente DOM
-        const chatbox = document.getElementById('chatbox');
-        const userInput = document.getElementById('userInput');
-        const sendButton = document.getElementById('sendButton');
-
-        // Adăugare mesaj
-        function addMessage(text, isUser) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
-            messageDiv.textContent = text;
-            chatbox.appendChild(messageDiv);
-            chatbox.scrollTop = chatbox.scrollHeight;
-        }
-
-        // Verifică disponibilitatea
-        async function checkDisponibilitate(data, ora, cosmeticianaId) {
-            const query = db.collection("programari")
-                .where("data", "==", data)
-                .where("ora", "==", ora)
-                .where("cosmeticianaId", "==", cosmeticianaId);
-            
-            const snapshot = await query.get();
-            return snapshot.empty;
-        }
-
-        // Crează programare
-        async function createProgramare(client, telefon, data, ora, tratamentId, cosmeticianaId) {
-            await db.collection("programari").add({
-                client,
-                telefon,
-                data,
-                ora,
-                tratamentId,
-                cosmeticianaId,
-                status: "confirmată"
-            });
-        }
-
-        // Detectează intenția
-        async function detectIntent(text) {
-    try {
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                prompt: `Clasifică mesajul în 'programare' sau 'recomandare': "${text}"` // Backticks aici
-            })
-        });
-        const data = await response.json();
-        return data.reply.toLowerCase().includes('programare') ? 'programare' : 'recomandare';
-    } catch (error) {
-        return 'recomandare';
-    }
-}
-
-// Funcția handleAppointment (corectată)
-async function handleAppointment(userMessage) {
-    try {
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                prompt: `Extrage JSON cu "data", "ora", "tratament" și "cosmeticianaId" din: "${userMessage}"` // Backticks aici
-            })
-        });
-        // ... restul codului rămâne neschimbat
-    } catch (error) {
-        return "⚠️ Eroare la procesare.";
-    }
-}
-
-        // Răspunde la întrebări generale
-        async function handleGeneralQuery(userMessage) {
-            try {
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: userMessage })
-                });
-                const data = await response.json();
-                return data.reply;
-            } catch (error) {
-                return "⚠️ Nu pot răspunde acum.";
-            }
-        }
-
-        // Trimite mesaj
-        async function sendMessage() {
-            const userMessage = userInput.value.trim();
-            if (!userMessage) return;
-
-            addMessage(userMessage, true);
-            userInput.value = '';
-
-            try {
-                const intent = await detectIntent(userMessage);
-                let reply;
-
-                if (intent === 'programare') {
-                    reply = await handleAppointment(userMessage);
-                } else {
-                    reply = await handleGeneralQuery(userMessage);
-                }
-
-                addMessage(reply, false);
-            } catch (error) {
-                addMessage("⚠️ Eroare de conexiune.", false);
-            }
-        }
-
-        // Evenimente
-        sendButton.addEventListener('click', sendMessage);
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
