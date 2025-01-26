@@ -1,47 +1,30 @@
-const chatbox = document.getElementById('chatbox');
-const userInput = document.getElementById('userInput');
-const sendButton = document.getElementById('sendButton');
+try {
+    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${process.env.API_KEY}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            model: 'deepseek-chat',
+            messages: [
+                { role: 'system', content: 'You are a helpful assistant.' },
+                { role: 'user', content: prompt },
+            ],
+            stream: false,
+        }),
+    });
 
-// Adaugă un mesaj în chatbox
-function addMessage(message, isUser) {
-    const messageElement = document.createElement('div');
-    messageElement.classList.add('message', isUser ? 'user' : 'bot');
-    messageElement.textContent = message;
-    chatbox.appendChild(messageElement);
-    chatbox.scrollTop = chatbox.scrollHeight; // Scroll automat
-}
+    const data = await response.json();
 
-// Trimite un mesaj către backend
-async function sendMessage() {
-    const userMessage = userInput.value.trim();
-    if (!userMessage) return;
+    console.log('DeepSeek API Response:', JSON.stringify(data, null, 2)); // Log răspunsul complet
 
-    addMessage(userMessage, true); // Afișează mesajul utilizatorului
-    userInput.value = ''; // Golește input-ul
-
-    try {
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ prompt: userMessage }),
-        });
-
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-
-        const data = await response.json();
-        const botMessage = data.choices[0].text.trim();
-        addMessage(botMessage, false); // Afișează răspunsul botului
-    } catch (error) {
-        addMessage('A apărut o eroare. Te rog încearcă din nou.', false);
+    if (!response.ok) {
+        return res.status(response.status).json({ error: data.error || 'Something went wrong' });
     }
-}
 
-// Evenimente pentru trimiterea mesajelor
-sendButton.addEventListener('click', sendMessage);
-userInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendMessage();
-});
+    res.status(200).json(data);
+} catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+}
