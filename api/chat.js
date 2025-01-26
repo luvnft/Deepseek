@@ -11,13 +11,12 @@ export default async function handler(req, res) {
     }
 
     try {
-        const response = await fetch('https://api.deepseek.com/v1/chat', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${process.env.API_KEY}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
+       const response = await fetch('https://deepscek-flax.vercel.app/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt: userMessage }),
+});
+
                 prompt: prompt,
                 max_tokens: 150,
             }),
