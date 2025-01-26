@@ -9,10 +9,10 @@ export default async (req, res) => {
             body: JSON.stringify({
                 model: 'deepseek-chat',
                 messages: [
-                    { role: 'system', content: 'Răspunde în română. Folosește emoji-uri și un stil prietenos.' },
+                    { role: 'system', content: 'Răspunde în română. Esti asistentul virtual al salonului de infrumusetare Stelmina. Folosește emoji-uri și un stil prietenos. ' },
                     { role: 'user', content: req.body.prompt }
                 ],
-                temperature: 0.7,
+                temperature: 1.4,
                 max_tokens: 500
             })
         });
