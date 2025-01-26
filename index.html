@@ -3,11 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chatbot Futuristic</title>
+    <title>Chatbot Salon Stelmina</title>
     
     <!-- Biblioteci Externe -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js"></script>
     
     <!-- Stiluri Custom -->
     <style>
@@ -51,16 +55,7 @@
             overflow: hidden;
             z-index: 1;
         }
-        <div class="admin-login hidden fixed inset-0 bg-black bg-opacity-50">
-    <div class="bg-white rounded-lg p-6 max-w-sm mx-auto mt-20">
-        <h2 class="text-2xl font-bold mb-4">Autentificare Staff</h2>
-        <input type="email" id="staffEmail" placeholder="Email" class="w-full mb-3 p-2 border rounded">
-        <input type="password" id="staffPassword" placeholder="Parolă" class="w-full mb-4 p-2 border rounded">
-        <button onclick="loginStaff()" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
-            Intră în cont
-        </button>
-    </div>
-</div>
+
         /* Mesaje */
         .message {
             position: relative;
@@ -147,11 +142,27 @@
 
     <!-- Scripturi -->
     <script>
+        // Configurare Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBahkhy2GgUW2wM5dxghoVt2bv0-6ZyWqQ",
+            authDomain: "restaurantapp-d0256.firebaseapp.com",
+            projectId: "restaurantapp-d0256",
+            storageBucket: "restaurantapp-d0256.appspot.com",
+            messagingSenderId: "275208346650",
+            appId: "1:275208346650:web:30f21698afaeb3919945a3",
+            measurementId: "G-X0H5WP9NX1"
+        };
+
+        // Inițializare Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Elemente DOM
         const chatbox = document.getElementById('chatbox');
         const userInput = document.getElementById('userInput');
         const sendButton = document.getElementById('sendButton');
 
-        // Adăugare mesaj
+        // Adăugare mesaj în chat
         function addMessage(text, isUser) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
@@ -160,25 +171,98 @@
             chatbox.scrollTop = chatbox.scrollHeight;
         }
 
-        // Trimite cerere la API
-        async function sendMessage() {
-            const prompt = userInput.value.trim();
-            if (!prompt) return;
+        // Verifică disponibilitatea
+        async function checkDisponibilitate(data, ora, cosmeticianaId) {
+            const q = firebase.firestore.query(
+                firebase.firestore.collection(db, "programari"),
+                firebase.firestore.where("data", "==", data),
+                firebase.firestore.where("ora", "==", ora),
+                firebase.firestore.where("cosmeticianaId", "==", cosmeticianaId)
+            );
+            const snapshot = await firebase.firestore.getDocs(q);
+            return snapshot.empty; // true dacă este disponibil
+        }
 
-            addMessage(prompt, true);
+        // Creează o programare
+        async function createProgramare(client, telefon, data, ora, tratamentId, cosmeticianaId) {
+            const programare = {
+                client,
+                telefon,
+                data,
+                ora,
+                tratamentId,
+                cosmeticianaId,
+                status: "confirmată"
+            };
+            await firebase.firestore.addDoc(firebase.firestore.collection(db, "programari"), programare);
+        }
+
+        // Detectează intenția utilizatorului
+        async function detectIntent(text) {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: `Clasifică mesajul în 'programare' sau 'recomandare': "${text}"` })
+            });
+            const data = await response.json();
+            return data.reply.toLowerCase().includes('programare') ? 'programare' : 'recomandare';
+        }
+
+        // Gestionează cererea de programare
+        async function handleAppointment(userMessage) {
+            // Extrage detalii din mesaj (ex: "programare manichiură mâine la 14:00")
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: `Extrage JSON cu "data", "ora", "tratament" și "cosmeticianaId" din: "${userMessage}"`
+                })
+            });
+            const details = await response.json();
+
+            // Verifică disponibilitatea
+            const disponibil = await checkDisponibilitate(details.data, details.ora, details.cosmeticianaId);
+            if (disponibil) {
+                // Creează programarea
+                await createProgramare("Nume Client", "0722...", details.data, details.ora, details.tratament, details.cosmeticianaId);
+                return `✅ Programare confirmată pentru ${details.data} la ${details.ora}.`;
+            } else {
+                return "⚠️ Ne pare rău, slotul este ocupat. Vă recomandăm altă oră.";
+            }
+        }
+
+        // Gestionează cererea de recomandare
+        async function handleTreatmentQuery(userMessage) {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: userMessage })
+            });
+            const data = await response.json();
+            return data.reply;
+        }
+
+        // Trimite mesaj
+        async function sendMessage() {
+            const userMessage = userInput.value.trim();
+            addMessage(userMessage, true);
             userInput.value = '';
 
             try {
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt })
-                });
-                
-                const data = await response.json();
-                addMessage(data.reply, false);
+                // Detectează intenția
+                const intent = await detectIntent(userMessage);
+
+                // Procesează cererea
+                let reply;
+                if (intent === 'programare') {
+                    reply = await handleAppointment(userMessage);
+                } else {
+                    reply = await handleTreatmentQuery(userMessage);
+                }
+
+                addMessage(reply, false);
             } catch (error) {
-                addMessage('⚠️ Eroare de conexiune cu serverul', false);
+                addMessage("⚠️ Eroare. Vă rugăm încercați mai târziu.", false);
             }
         }
 
