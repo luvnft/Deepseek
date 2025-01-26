@@ -33,13 +33,11 @@
             background: radial-gradient(circle, rgba(100,255,255,0.1) 0%, transparent 70%);
             animation: particle-move 20s linear infinite;
             z-index: 0;
-            top: -50%;
-            left: -50%;
         }
 
         @keyframes particle-move {
-            from { transform: translate(0, 0) rotate(0deg); }
-            to { transform: translate(0, 0) rotate(360deg); }
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to { transform: translate(-50%, -50%) rotate(360deg); }
         }
 
         .chat-container {
@@ -159,7 +157,7 @@
         const userInput = document.getElementById('userInput');
         const sendButton = document.getElementById('sendButton');
 
-        // Adăugare mesaj în chat
+        // Adăugare mesaj
         function addMessage(text, isUser) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
@@ -168,70 +166,42 @@
             chatbox.scrollTop = chatbox.scrollHeight;
         }
 
-        // Verifică disponibilitatea (Firestore)
-        async function checkDisponibilitate(dataProgramare, ora, cosmeticianaId) {
-            try {
-                const query = db.collection("programari")
-                                .where("data", "==", dataProgramare)
-                                .where("ora", "==", ora)
-                                .where("cosmeticianaId", "==", cosmeticianaId);
-
-                const snapshot = await query.get();
-                // Dacă snapshot e gol => e disponibil
-                return snapshot.empty;
-            } catch (err) {
-                console.error("Eroare la checkDisponibilitate:", err);
-                // În caz de eroare, consideră-l ocupat sau tratează cum dorești
-                return false;
-            }
+        // Verifică disponibilitatea
+        async function checkDisponibilitate(data, ora, cosmeticianaId) {
+            const query = db.collection("programari")
+                .where("data", "==", data)
+                .where("ora", "==", ora)
+                .where("cosmeticianaId", "==", cosmeticianaId);
+            
+            const snapshot = await query.get();
+            return snapshot.empty;
         }
 
-        // Crează programare (Firestore)
-        async function createProgramare(client, telefon, dataProgramare, ora, tratamentId, cosmeticianaId) {
-            try {
-                await db.collection("programari").add({
-                    client,
-                    telefon,
-                    data: dataProgramare,
-                    ora,
-                    tratamentId,
-                    cosmeticianaId,
-                    status: "confirmată"
-                });
-            } catch (err) {
-                console.error("Eroare la createProgramare:", err);
-            }
+        // Crează programare
+        async function createProgramare(client, telefon, data, ora, tratamentId, cosmeticianaId) {
+            await db.collection("programari").add({
+                client,
+                telefon,
+                data,
+                ora,
+                tratamentId,
+                cosmeticianaId,
+                status: "confirmată"
+            });
         }
 
-        // Determină intenția (programare / recomandare)
+        // Detectează intenția
         async function detectIntent(text) {
             try {
-                // Aici e important să ai un endpoint real /api/chat
-                // care să întoarcă JSON de forma { "reply": "programare" } sau "recomandare"
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        prompt: `Clasifică mesajul în 'programare' sau 'recomandare': "${text}"`
-                    })
+                    body: JSON.stringify({ prompt: `Clasifică mesajul în 'programare' sau 'recomandare': "${text}"` })
                 });
-
-                if (!response.ok) {
-                    throw new Error('Răspuns invalid de la server');
-                }
                 const data = await response.json();
-                
-                // Verificăm dacă există data.reply
-                if (data && data.reply) {
-                    const rez = data.reply.toLowerCase();
-                    return rez.includes('programare') ? 'programare' : 'recomandare';
-                } else {
-                    // Dacă serverul nu întoarce "reply"
-                    return 'recomandare';
-                }
+                return data.reply.toLowerCase().includes('programare') ? 'programare' : 'recomandare';
             } catch (error) {
-                console.error("Eroare la detectIntent:", error);
-                return 'recomandare'; // fallback
+                return 'recomandare';
             }
         }
 
@@ -245,35 +215,16 @@
                         prompt: `Extrage JSON cu "data", "ora", "tratament" și "cosmeticianaId" din: "${userMessage}"`
                     })
                 });
-
-                if (!response.ok) {
-                    throw new Error('Eroare la procesare programare');
-                }
                 const details = await response.json();
-                
-                // Asigură-te că serverul returnează { data, ora, tratament, cosmeticianaId }
-                if (!details.data || !details.ora || !details.tratament || !details.cosmeticianaId) {
-                    return "⚠️ Nu am putut extrage detaliile programării.";
-                }
 
-                // Verifică disponibilitatea
                 const disponibil = await checkDisponibilitate(details.data, details.ora, details.cosmeticianaId);
                 if (disponibil) {
-                    // Creăm programarea
-                    await createProgramare(
-                        "Client Nou",
-                        "0722...",    // exemplu, poate fi cerut de la utilizator
-                        details.data,
-                        details.ora,
-                        details.tratament,
-                        details.cosmeticianaId
-                    );
+                    await createProgramare("Client Nou", "0722...", details.data, details.ora, details.tratament, details.cosmeticianaId);
                     return `✅ Programare confirmată pentru ${details.data} la ${details.ora}.`;
                 } else {
                     return "⚠️ Slot ocupat. Vă recomandăm altă oră.";
                 }
             } catch (error) {
-                console.error("Eroare la handleAppointment:", error);
                 return "⚠️ Eroare la procesare.";
             }
         }
@@ -286,58 +237,41 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ prompt: userMessage })
                 });
-
-                if (!response.ok) {
-                    throw new Error('Răspuns invalid la întrebări generale');
-                }
                 const data = await response.json();
-
-                if (data && data.reply) {
-                    return data.reply;
-                } else {
-                    return "⚠️ Nu am putut interpreta răspunsul.";
-                }
+                return data.reply;
             } catch (error) {
-                console.error("Eroare la handleGeneralQuery:", error);
                 return "⚠️ Nu pot răspunde acum.";
             }
         }
 
-        // Trimite mesajul
+        // Trimite mesaj
         async function sendMessage() {
             const userMessage = userInput.value.trim();
             if (!userMessage) return;
 
-            // Afișăm mesajul utilizatorului
             addMessage(userMessage, true);
             userInput.value = '';
 
             try {
-                // Determinăm intenția
                 const intent = await detectIntent(userMessage);
                 let reply;
 
-                // În funcție de intenție, apelăm logica potrivită
                 if (intent === 'programare') {
                     reply = await handleAppointment(userMessage);
                 } else {
                     reply = await handleGeneralQuery(userMessage);
                 }
 
-                // Afișăm răspunsul
                 addMessage(reply, false);
             } catch (error) {
-                console.error("Eroare la sendMessage:", error);
                 addMessage("⚠️ Eroare de conexiune.", false);
             }
         }
 
-        // Event listeners
+        // Evenimente
         sendButton.addEventListener('click', sendMessage);
         userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
+            if (e.key === 'Enter') sendMessage();
         });
     </script>
 </body>
