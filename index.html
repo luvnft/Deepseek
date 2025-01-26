@@ -3,55 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chatbot DeepSeek</title>
-    <!-- Tailwind CSS + Font Awesome -->
+    <title>Chatbot Futuristic</title>
+    
+    <!-- Biblioteci Externe -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Stiluri Custom -->
     <style>
-        .chatbox { height: 500px; }
-        .message { animation: fadeIn 0.3s; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(45deg, #0a0a1a, #1a1a3a, #0a0a1a);
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Efect Particule */
+        body::before {
+            content: "";
+            position: absolute;
+            width: 300%;
+            height: 300%;
+            background: radial-gradient(circle, rgba(100,255,255,0.1) 0%, transparent 70%);
+            animation: particle-move 20s linear infinite;
+            z-index: 0;
+        }
+
+        @keyframes particle-move {
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Container Chat */
+        .chat-container {
+            position: relative;
+            background: rgba(16, 16, 32, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(100, 255, 255, 0.2);
+            box-shadow: 0 0 30px rgba(100,255,255,0.1),
+                        inset 0 0 15px rgba(100,255,255,0.05);
+            width: 90%;
+            max-width: 800px;
+            margin: 2rem auto;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        /* Mesaje */
+        .message {
+            position: relative;
+            max-width: 80%;
+            padding: 1.2rem;
+            margin: 1rem 0;
+            border-radius: 15px;
+            animation: messageAppear 0.4s ease-out;
+            backdrop-filter: blur(5px);
+        }
+
+        .message.user {
+            background: linear-gradient(45deg, rgba(100,150,255,0.15), rgba(100,200,255,0.1));
+            border: 1px solid rgba(100,255,255,0.15);
+            margin-left: auto;
+            color: #c8ffff;
+        }
+
+        .message.bot {
+            background: linear-gradient(45deg, rgba(32,32,64,0.3), rgba(16,16,32,0.2));
+            border: 1px solid rgba(100,255,255,0.1);
+            color: #e0e0ff;
+        }
+
+        @keyframes messageAppear {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Input */
+        #userInput {
+            background: rgba(8, 8, 16, 0.6);
+            border: 1px solid rgba(100,255,255,0.2);
+            color: #c8ffff;
+            padding: 1rem;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        #userInput:focus {
+            border-color: #64ffff;
+            box-shadow: 0 0 15px rgba(100,255,255,0.2);
+        }
+
+        /* Buton */
+        #sendButton {
+            background: linear-gradient(135deg, #64ffff, #3264ff);
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #sendButton:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(100,255,255,0.3);
+        }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
-    <div class="bg-white rounded-xl shadow-lg w-96">
+<body>
+    <div class="chat-container">
         <!-- Header -->
-        <div class="bg-blue-600 text-white p-4 rounded-t-xl flex items-center">
-            <i class="fas fa-robot mr-3"></i>
-            <h1 class="font-bold">DeepSeek Chat</h1>
+        <div class="p-6 bg-gradient-to-r from-[#101020] to-[#202040] border-b border-[#64ffff33]">
+            <h1 class="text-2xl font-bold text-[#64ffff] flex items-center gap-3">
+                <i class="fas fa-robot text-[#64ffff]"></i>
+                DEEPSEEK AI
+            </h1>
         </div>
 
-        <!-- Chat Container -->
-        <div id="chatbox" class="p-4 h-96 overflow-y-auto space-y-2">
-            <div class="message bot bg-gray-100 p-3 rounded-lg">Bună! Cu ce te pot ajuta?</div>
+        <!-- Zona de Chat -->
+        <div id="chatbox" class="h-96 p-6 overflow-y-auto bg-[#08081066]">
+            <div class="message bot">Bună! Sunt un AI creat de DeepSeek. Cu ce te pot ajuta astăzi? 🌟</div>
         </div>
 
         <!-- Input -->
-        <div class="p-4 border-t flex gap-2">
-            <input id="userInput" type="text" placeholder="Scrie..." 
-                   class="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
-            <button id="sendButton" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+        <div class="p-6 bg-[#101020b3] border-t border-[#64ffff33] flex gap-3">
+            <input id="userInput" type="text" placeholder="Scrie mesajul tău..." class="flex-1">
+            <button id="sendButton" class="text-white">
                 <i class="fas fa-paper-plane"></i>
             </button>
         </div>
     </div>
 
-    <!-- Script Integrat -->
+    <!-- Scripturi -->
     <script>
         const chatbox = document.getElementById('chatbox');
         const userInput = document.getElementById('userInput');
         const sendButton = document.getElementById('sendButton');
 
-        // Adaugă mesaj
+        // Adăugare mesaj
         function addMessage(text, isUser) {
-            const div = document.createElement('div');
-            div.className = `message p-3 rounded-lg ${isUser ? 'bg-blue-600 text-white ml-auto' : 'bg-gray-100'}`;
-            div.textContent = text;
-            chatbox.appendChild(div);
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            messageDiv.textContent = text;
+            chatbox.appendChild(messageDiv);
             chatbox.scrollTop = chatbox.scrollHeight;
         }
 
-        // Trimite cerere
+        // Trimite cerere la API
         async function sendMessage() {
             const prompt = userInput.value.trim();
             if (!prompt) return;
@@ -65,16 +165,19 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ prompt })
                 });
+                
                 const data = await response.json();
                 addMessage(data.reply, false);
             } catch (error) {
-                addMessage('⚠️ Eroare de conexiune', false);
+                addMessage('⚠️ Eroare de conexiune cu serverul', false);
             }
         }
 
         // Evenimente
         sendButton.addEventListener('click', sendMessage);
-        userInput.addEventListener('keypress', (e) => e.key === 'Enter' && sendMessage());
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
     </script>
 </body>
 </html>
