@@ -242,51 +242,98 @@
     // ===============================
     //  Gestionează programarea
     // ===============================
-    async function handleAppointment(userMessage) {
-      try {
-        // Obținem detaliile (data, ora etc.) printr-un request la /api/chat
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt: `Extrage JSON cu "data", "ora", "tratament" și "cosmeticianaId" din: "${userMessage}"`
-          })
-        });
-        const details = await response.json();
+   async function handleAppointment(userMessage) {
+  try {
+    // 1. Extragere detalii
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: `Extrage JSON cu "data", "ora", "tratament" și "cosmeticianaId" din: "${userMessage}"`
+      })
+    });
 
-        // Verificăm disponibilitatea
-        const disponibil = await checkDisponibilitate(details.data, details.ora, details.cosmeticianaId);
-        if (disponibil) {
-          // Creăm programare (ex. date fixe de client)
-          await createProgramare("Client Nou", "0722...", details.data, details.ora, details.tratament, details.cosmeticianaId);
-          return `✅ Programare confirmată pentru ${details.data} la ${details.ora}.`;
-        } else {
-          return "⚠️ Ne pare rău, slotul este ocupat. Vă recomandăm o altă oră sau o altă zi.";
-        }
-
-      } catch (error) {
-        console.error("Eroare la handleAppointment:", error);
-        return "⚠️ A apărut o eroare la procesarea cererii de programare.";
-      }
+    // Verificare răspuns HTTP
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Eroare extragere detalii: [${response.status}] ${errorText}`);
     }
 
-    // ===============================
-    //  Răspunde la întrebări generale
-    // ===============================
-    async function handleGeneralQuery(userMessage) {
-      try {
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: userMessage })
-        });
-        const data = await response.json();
-        return data.reply;
-      } catch (error) {
-        console.error("Eroare la handleGeneralQuery:", error);
-        return "⚠️ Ne pare rău, nu putem răspunde în acest moment.";
-      }
+    const details = await response.json();
+
+    // Validare structură detalii
+    const requiredFields = ['data', 'ora', 'tratament', 'cosmeticianaId'];
+    if (!requiredFields.every(field => details?.[field])) {
+      throw new Error('Date incomplete din mesajul utilizatorului');
     }
+
+    // 2. Verificare disponibilitate
+    const disponibil = await checkDisponibilitate(
+      details.data, 
+      details.ora, 
+      details.cosmeticianaId
+    );
+
+    if (!disponibil) {
+      return "⚠️ Ne pare rău, slotul este ocupat. Vă recomandăm o altă oră sau o altă zi.";
+    }
+
+    // 3. Creare programare
+    await createProgramare(
+      "Client Nou",
+      "0722...",
+      details.data,
+      details.ora,
+      details.tratament,
+      details.cosmeticianaId
+    );
+
+    return `✅ Programare confirmată pentru ${details.data} la ${details.ora}.`;
+
+  } catch (error) {
+    console.error("Eroare la handleAppointment:", error);
+    // Mesaj mai specific în funcție de eroare
+    return error.message.includes('disponibilitate') 
+      ? "⚠️ Eroare la verificarea disponibilității. Vă rugăm încercați din nou."
+      : `⚠️ Eroare la procesare: ${error.message}`;
+  }
+}
+
+// ===============================
+// Răspunde la întrebări generale (versiune îmbunătățită)
+// ===============================
+async function handleGeneralQuery(userMessage) {
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: userMessage })
+    });
+
+    // Tratăm erorile HTTP explicit
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => '(nu s-a putut citi corpul erorii)');
+      throw new Error(`Eroare ${response.status}: ${errorBody}`);
+    }
+
+    const data = await response.json();
+
+    // Validare mai robustă a răspunsului
+    if (!data || typeof data.reply !== 'string') {
+      throw new Error('Structură invalidă de răspuns de la server');
+    }
+
+    return data.reply;
+
+  } catch (error) {
+    console.error("Eroare la handleGeneralQuery:", {
+      message: error.message,
+      stack: error.stack,
+      userMessage
+    });
+    return `⚠️ Eroare tehnica: ${error.message}`;
+  }
+}
 
     // ===============================
     //  Trimite mesajul
