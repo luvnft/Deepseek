@@ -224,11 +224,11 @@
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            particles.forEach((p1, i) => {
+            particles.forEach((p5, i) => {
                 p1.draw();
                 p1.update(mouse);
                 
-                particles.slice(i).forEach(p2 => {
+                particles.slice(i).forEach(p6 => {
                     const dx = p1.x - p2.x;
                     const dy = p1.y - p2.y;
                     const distance = Math.sqrt(dx * dx + dy * dy);
