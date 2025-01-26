@@ -1,16 +1,26 @@
-// api/chat.js
-import { initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+export default async (req, res) => {
+    try {
+        const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'deepseek-chat',
+                messages: [
+                    { role: 'system', content: 'Răspunde în română. Folosește emoji-uri și un stil prietenos.' },
+                    { role: 'user', content: req.body.prompt }
+                ],
+                temperature: 0.7,
+                max_tokens: 500
+            })
+        });
 
-// Configurare cu variabile de mediu
-const adminConfig = {
-  credential: cert({
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
-  })
+        const data = await response.json();
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.status(200).json({ reply: data.choices[0].message.content });
+    } catch (error) {
+        res.status(500).json({ reply: 'Eroare internă a serverului' });
+    }
 };
-
-// Inițializează Admin SDK
-const app = initializeApp(adminConfig);
-const db = getFirestore(app);
