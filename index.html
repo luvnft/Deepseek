@@ -124,9 +124,11 @@
 
         <div id="chatbox">
             <div class="message bot">
-                Bună! ✨ Sunt asistentul virtual al salonului Stelmina. Cum vă pot ajuta astăzi? 
-                Vă rugăm să menționați ce serviciu doriți (pensat, masaj sculptural sau îngrijire facială),
-                data și ora preferată. 😊
+                Bună! ✨ Sunt asistentul virtual al salonului Stelmina. 
+                Cum vă pot ajuta astăzi? Vă rugăm să specificați:
+                - Numele dumneavoastră complet
+                - Data și ora dorită
+                - Serviciul solicitat (pensat, masaj sculptural bucal sau îngrijire facială)
             </div>
         </div>
 
@@ -172,26 +174,59 @@
         const sendButton = document.getElementById('sendButton');
         let isSending = false;
 
-        function sanitizeInput(text) {
-            return text
-                .replace(/[<>]/g, '')
-                .substring(0, 200);
+        function parseDate(input) {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth() + 1;
+            
+            // Format: "28 februarie"
+            const dateMatch = input.match(/(\d{1,2})\s+([a-zA-Z]+)/i);
+            if (!dateMatch) return null;
+
+            const day = parseInt(dateMatch[1]);
+            const monthName = dateMatch[2].toLowerCase();
+            const months = [
+                'ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie',
+                'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'
+            ];
+            const month = months.indexOf(monthName) + 1;
+
+            if (month < 1 || month > 12) return null;
+
+            // Dacă luna este în trecut față de luna curentă, folosim anul următor
+            const year = (month < currentMonth) ? currentYear + 1 : currentYear;
+
+            return new Date(year, month - 1, day);
         }
 
-        function showError(message) {
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'error-message';
-            errorDiv.textContent = message;
-            chatbox.appendChild(errorDiv);
-            chatbox.scrollTop = chatbox.scrollHeight;
+        function extractAppointmentDetails(text) {
+            const nameMatch = text.match(/[a-zA-ZăâîșțĂÂÎȘȚ ]+/);
+            const serviceMatch = text.match(/pensat|masaj sculptural bucal|îngrijire facială|/i);
+            const dateMatch = parseDate(text);
+
+            if (!nameMatch || !serviceMatch || !dateMatch) return null;
+
+            return {
+                name: nameMatch[0].trim(),
+                service: serviceMatch[0].toLowerCase(),
+                date: dateMatch.toISOString()
+            };
         }
 
-        function addMessage(text, isUser) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
-            messageDiv.textContent = text;
-            chatbox.appendChild(messageDiv);
-            chatbox.scrollTop = chatbox.scrollHeight;
+        async function saveAppointment(clientName, date, service) {
+            try {
+                await addDoc(collection(db, "appointments"), {
+                    clientName: clientName,
+                    date: date,
+                    service: service,
+                    status: 'pending',
+                    timestamp: new Date().toISOString()
+                });
+                return true;
+            } catch (error) {
+                console.error('Eroare la salvarea programării:', error);
+                return false;
+            }
         }
 
         async function sendMessage() {
@@ -200,46 +235,51 @@
             const rawPrompt = userInput.value.trim();
             if (!rawPrompt) return;
 
-            const prompt = sanitizeInput(rawPrompt);
-            if (prompt.length < 2) {
-                showError('Vă rugăm să introduceți un mesaj valid (minimum 2 caractere)');
-                return;
-            }
-
             isSending = true;
             sendButton.innerHTML = '<div class="loader"></div>';
             sendButton.disabled = true;
 
             try {
-                addMessage(prompt, true);
+                addMessage(rawPrompt, true);
                 userInput.value = '';
+
+                const details = extractAppointmentDetails(rawPrompt);
+                if (details) {
+                    const saved = await saveAppointment(details.name, details.date, details.service);
+                    if (saved) {
+                        const formattedDate = new Date(details.date).toLocaleDateString('ro-RO', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric'
+                        });
+                        addMessage(
+                            `Programarea ta pentru ${details.service} la ${formattedDate} a fost înregistrată cu succes!`,
+                            false
+                        );
+                        return;
+                    }
+                }
 
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt })
+                    body: JSON.stringify({ prompt: rawPrompt })
                 });
 
-                if (!response.ok) {
-                    throw new Error(`Eroare server: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`Eroare server: ${response.status}`);
 
                 const data = await response.json();
-                
-                if (data.reply && typeof data.reply === 'string') {
-                    addMessage(data.reply.replace(/<\/?[^>]+(>|$)/g, ""), false);
-                } else {
-                    throw new Error('Răspuns invalid de la server');
-                }
+                addMessage(data.reply.replace(/<\/?[^>]+(>|$)/g, ""), false);
             } catch (error) {
                 console.error('Eroare:', error);
-                showError('Eroare de conexiune. Vă rugăm să încercați din nou.');
+                addMessage('⚠️ Eroare de conexiune sau server. Încearcă din nou.', false);
             } finally {
                 isSending = false;
                 sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
                 sendButton.disabled = false;
             }
         }
+
 
        sendButton.addEventListener('click', sendMessage);
         userInput.addEventListener('keypress', (e) => {
