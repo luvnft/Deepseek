@@ -233,6 +233,7 @@
       where
     } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
 
+    // Configurația Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyBwCFGYsXp5zjWIHAcQbOmdd31e7bDN8mk",
       authDomain: "stelmina-19617.firebaseapp.com",
@@ -252,6 +253,9 @@
     const sendButton = document.getElementById('sendButton');
     let userName = localStorage.getItem('chatbotUserName') || null;
 
+    // Offset fus orar
+    const timezoneOffset = new Date().getTimezoneOffset() * 60000;
+
     // Inițializare chat
     window.addEventListener('DOMContentLoaded', () => {
       if (userName) {
@@ -267,6 +271,7 @@
       chatbox.scrollTop = chatbox.scrollHeight;
     }
 
+    // Extrage numele utilizatorului din text
     function extractUserName(text) {
       const patterns = [
         /(?:sunt|numele\s*(meu)?\s*este?|mă\s*cheamă)\s+([A-Za-zȘșȚțÂâÎîĂă]+)/i,
@@ -285,10 +290,31 @@
       return userName;
     }
 
+    // Funcție pentru a apela API-ul AI (ex: /api/chat)
+    async function getAIChatResponse(prompt) {
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: prompt })
+        });
+        const data = await response.json();
+        return data.reply;
+      } catch (error) {
+        console.error('Eroare API:', error);
+        return '⏳ Momentan avem dificultăți tehnice. Vă rugăm să încercați mai târziu.';
+      }
+    }
+
+    // Funcție de parsare a datei cu corecția fusului orar
     function parseDate(input) {
       const now = new Date();
-      const weekdays = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă'];
-      let finalDate = new Date(now);
+      const weekdays = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbăta'];
+
+      // Funcție internă de ajustare
+      const adjustTimezone = (date) => new Date(date.getTime() - timezoneOffset);
+
+      let finalDate = adjustTimezone(new Date(now));
 
       // Parsare zile săptămânii
       const weekdayMatch = input.match(new RegExp(`\\b(${weekdays.join('|')})\\b`, 'i'));
@@ -319,6 +345,7 @@
       return finalDate;
     }
 
+    // Verifică disponibilitatea în Firestore
     async function checkAvailability(date) {
       const colRef = collection(db, "appointments");
       const q = query(colRef, where("date", "==", date.toISOString()));
@@ -326,6 +353,7 @@
       return snapshot.empty;
     }
 
+    // Salvează programarea în Firestore
     async function saveAppointment(name, date, service) {
       try {
         await addDoc(collection(db, "appointments"), {
@@ -342,6 +370,49 @@
       }
     }
 
+    // Returnează răspunsul final pe baza textului utilizatorului
+    async function handleUserMessage(text) {
+      try {
+        // Extrage nume
+        const name = extractUserName(text);
+        // Identifică serviciul
+        const serviceMatch = text.match(/pensat|masaj sculptural bucal|îngrijire facială/i);
+        // Parsează data
+        const date = parseDate(text);
+
+        // Verifică dacă avem de-a face cu o programare
+        if (name && serviceMatch && date) {
+          const isAvailable = await checkAvailability(date);
+          if (!isAvailable) {
+            return "⏰ Ne pare rău, intervalul este deja ocupat. Vă rugăm alegeți altă oră.";
+          }
+          const saved = await saveAppointment(name, date, serviceMatch[0]);
+          if (saved) {
+            const formattedDate = date.toLocaleString('ro-RO', {
+              timeZone: 'Europe/Bucharest',
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            return `✅ Programare confirmată!<br><br>
+              👤 ${name}<br>
+              📅 ${formattedDate}<br>
+              💼 ${serviceMatch[0]}`;
+          } else {
+            return "⚠️ Eroare la salvarea programării. Vă rugăm încercați din nou.";
+          }
+        }
+      } catch (error) {
+        console.error('Eroare programare:', error);
+      }
+
+      // Dacă nu e programare, încercăm răspunsul AI
+      return await getAIChatResponse(text);
+    }
+
+    // Funcție de afișare a programărilor în admin view
     async function showAppointments() {
       const appointmentsList = document.getElementById('appointmentsList');
       appointmentsList.innerHTML = '';
@@ -377,7 +448,7 @@
       });
     }
 
-    // Evenimente principale
+    // Evenimentul principal - trimiterea mesajului de către utilizator
     sendButton.addEventListener('click', async () => {
       const text = userInput.value.trim();
       if (!text) return;
@@ -386,52 +457,35 @@
       addMessage(text, true);
 
       try {
-        const name = extractUserName(text);
-        const serviceMatch = text.match(/pensat|masaj sculptural bucal|îngrijire facială/i);
-        const date = parseDate(text);
-
-        if (name && serviceMatch && date) {
-          const isAvailable = await checkAvailability(date);
-          if (!isAvailable) {
-            addMessage("⏰ Ne pare rău, intervalul este deja ocupat. Vă rugăm alegeți altă oră.", false);
-            return;
-          }
-
-          const saved = await saveAppointment(name, date, serviceMatch[0]);
-          if (saved) {
-            const formattedDate = date.toLocaleString('ro-RO', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              hour: '2-digit',
-              minute: '2-digit'
-            });
-            addMessage(`✅ Programare confirmată!<br><br>
-              👤 ${name}<br>
-              📅 ${formattedDate}<br>
-              💼 ${serviceMatch[0]}`, false);
-          }
-        } else {
-          addMessage("🔍 Vă rugăm să specificați toate detaliile necesare: nume, dată și serviciu.", false);
-        }
+        const response = await handleUserMessage(text);
+        addMessage(response, false);
       } catch (error) {
         console.error("Eroare:", error);
         addMessage("⚠️ A apărut o eroare. Vă rugăm încercați din nou.", false);
       }
     });
 
-    // Admin functions
+    // Intrare "Enter" în câmpul de text
+    userInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendButton.click();
+    });
+
+    // Funcționalitate buton Admin
     document.getElementById('toggleViewBtn').addEventListener('click', () => {
       const adminView = document.getElementById('adminView');
       adminView.style.display = adminView.style.display === 'none' ? 'block' : 'none';
-      if (adminView.style.display === 'block') showAppointments();
+      if (adminView.style.display === 'block') {
+        showAppointments();
+      }
     });
 
+    // Reîmprospătare listă programări
     document.getElementById('refreshAppointments').addEventListener('click', showAppointments);
 
+    // Adăugare programare din admin
     document.getElementById('addAppointmentBtn').addEventListener('click', async () => {
       const name = prompt('Nume client:');
-      const dateInput = prompt('Dată și oră (ex: "joi 15:30" sau "2024-03-25 14:00"):');
+      const dateInput = prompt('Dată și oră (ex: "joi 15:30" sau "2024-03-25 14:00")');
       const service = prompt('Serviciu:');
 
       if (name && dateInput && service) {
@@ -445,8 +499,11 @@
       }
     });
 
-    userInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') sendButton.click();
+    // Buton de salvare a configurației chatbot (exemplu)
+    document.getElementById('sendInstructionsBtn').addEventListener('click', () => {
+      const instructions = document.getElementById('instructionsInput').value;
+      console.log("Instrucțiuni chatbot:", instructions);
+      alert("Instrucțiunile au fost salvate (exemplu).");
     });
   </script>
 </body>
