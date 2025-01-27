@@ -1,4 +1,4 @@
-// pages/api/chat.js (exemplu Next.js)
+// pages/api/chat.js
 export default async (req, res) => {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
@@ -6,14 +6,12 @@ export default async (req, res) => {
   }
 
   try {
-    // Prompt de sistem: reguli pentru chatbot
     const systemPrompt = `
-      Acționezi ca asistent virtual profesional pentru salonul Stelmina.
+      Acționezi ca asistent virtual pentru salonul Stelmina.
       Servicii disponibile:
       1. Pensat (30 lei)
       2. Masaj Sculptural (250-300 lei)
       3. Îngrijire facială (300-600 lei)
-
       Instrucțiuni stricte:
       - Răspunsuri concise în română (max. 3 propoziții)
       - Cere nume, dată, oră, serviciu
@@ -22,11 +20,11 @@ export default async (req, res) => {
       - Dacă nu știi, spune că vei verifica
     `;
 
-    // Ex. request la un model AI (DeepSeek, OpenAI etc.)
+    // Exemplu: trimitem prompt la un model AI (DeepSeek, OpenAI, etc.)
     const apiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+        'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`, 
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -47,10 +45,9 @@ export default async (req, res) => {
     }
 
     const data = await apiResponse.json();
-
+    
     res.setHeader('Access-Control-Allow-Origin', '*');
-
-    // Curățăm HTML/markdown
+    
     const cleanReply = data.choices[0].message.content
       .replace(/<\/?[^>]+(>|$)/g, '')
       .trim();
