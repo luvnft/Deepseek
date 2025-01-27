@@ -225,8 +225,8 @@
       <input type="text" id="userInput" placeholder="Scrie mesajul tău..." maxlength="200" list="services">
       <datalist id="services">
         <option value="Pensat">
-        <option value="Masaj sculptural bucal">
-        <option value="Îngrijire facială premium">
+        <option value="Masaj Sculptural">
+        <option value="Îngrijire facială">
       </datalist>
       <button id="sendButton">
         <i class="fas fa-paper-plane"></i>
@@ -283,11 +283,12 @@
       history.forEach(msg => addMessage(msg.text, msg.isUser, false));
       if(history.length === 0) {
         // Mesajul introductiv
-        addMessage(`Bună! ✨ Sunt asistentul virtual al salonului Stelmina.<br><br>
-          Te rog să precizezi:<br>
-          1. Numele tău<br>
-          2. Data și ora dorită<br>
-          3. Serviciul solicitat`, false, false);
+        addMessage(
+          `Bună! ✨ Sunt asistentul virtual al salonului Stelmina.<br><br>
+           Cum te pot ajuta? (Pentru programări, menționează "programare", altfel îți pot oferi doar informații.)`,
+          false,
+          false
+        );
       }
     };
     window.addEventListener('DOMContentLoaded', loadChatHistory);
@@ -451,13 +452,16 @@
     }
 
     // ------------------------------------------------------
-    // 5. Chat logic + AI fallback
+    // 5. Chat logic: decidem dacă user chiar vrea programare
     // ------------------------------------------------------
+    function isBookingRequest(text) {
+      // Căutăm cuvinte cheie (programez, programare, vreau programare, etc.)
+      return /\b(programare|programez|rezervare|rezerv|vreau să fac programare|vreau o programare|doresc programare)\b/i.test(text);
+    }
+
     async function getAIChatResponse(prompt) {
-      // Aici ați putea avea un endpoint real de chat AI
-      // Momentan doar returnează un text generic
+      // Aici se face un fetch la endpointul /api/chat
       try {
-        // DEMO: un fetch ipotetic
         const response = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -466,32 +470,40 @@
         const data = await response.json();
         return data.reply;
       } catch (error) {
+        console.error('Eroare la AI Chat:', error);
         return '⏳ Momentan avem dificultăți tehnice. Vă rugăm să încercați mai târziu.';
       }
     }
 
     async function handleUserMessage(text) {
-      // 1. Verificăm dacă apare un serviciu din cele 3 cunoscute
-      const serviceMatch = text.match(/pensat|masaj sculptural bucal|îngrijire facială premium/i);
+      // 1. Verificăm dacă user chiar cere programare (conține cuvinte cheie de booking)
+      const wantsBooking = isBookingRequest(text);
 
-      // 2. Dacă NU apare niciun serviciu, lăsăm AI-ul să răspundă liber
-      if(!serviceMatch) {
+      if(!wantsBooking) {
+        // Utilizatorul doar discută/întreabă => răspuns AI
         return await getAIChatResponse(text);
       }
 
-      // 3. Avem un serviciu => încercăm să facem programarea
+      // 2. Da, user-ul vrea programare => extragem info, validăm, salvăm
       try {
         // extragem numele (dacă încă nu-l aveam salvat)
         let name = extractUserName(text) || userName;
         if(!name) {
           // Numele e obligatoriu pentru o programare
-          return "Te rog să îmi spui și numele tău pentru a finaliza programarea.";
+          return "Pentru a face o programare, am nevoie de numele tău. Mă poți anunța?";
         }
         if(!validateName(name)) {
           return "⚠️ Nume invalid. Te rog folosește doar litere și spații (2-30 caractere).";
         }
         localStorage.setItem('chatbotUserName', name);
 
+        // Căutăm un serviciu cunoscut (pensat, masaj, ingrijire faciala)
+        const serviceMatch = text.match(/pensat|masaj\s*sculptural|îngrijire\s*facială/i);
+        if(!serviceMatch) {
+          return "Spune-mi, te rog, ce serviciu dorești? (Pensat, Masaj Sculptural, Îngrijire facială).";
+        }
+
+        const service = serviceMatch[0].toLowerCase().replace(/\s+/g, ' ');
         // parse date
         const date = parseDate(text);
         validateDateTime(date);
@@ -503,7 +515,7 @@
         }
 
         // salvăm programarea
-        const saved = await saveAppointment(name, date, serviceMatch[0]);
+        const saved = await saveAppointment(name, date, service);
         if (saved) {
           const formattedDate = date.toLocaleString('ro-RO', {
             weekday: 'long',
@@ -515,11 +527,12 @@
           return `✅ Programare confirmată!<br><br>
             👤 ${name}<br>
             📅 ${formattedDate}<br>
-            💼 ${serviceMatch[0]}`;
+            💼 ${service}`;
         }
 
-        // fallback la AI
+        // fallback la AI doar dacă nu putem salva (rare cazuri)
         return await getAIChatResponse(text);
+
       } catch (error) {
         // Orice eroare de validare
         return `⚠️ Eroare: ${error.message}`;
