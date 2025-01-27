@@ -2,7 +2,7 @@
 <html lang="ro">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no">
   <title>Stelmina - Salon de Înfrumusețare</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -155,6 +155,11 @@
       background: rgba(26,26,58,0.9);
       font-weight: 600;
     }
+
+    /* For consistent text color in appointment list */
+    .appointment-item, .appointment-name, .appointment-time, .appointment-service {
+      color: #64ffff;
+    }
   </style>
 </head>
 <body>
@@ -253,9 +258,6 @@
     const sendButton = document.getElementById('sendButton');
     let userName = localStorage.getItem('chatbotUserName') || null;
 
-    // Offset fus orar
-    const timezoneOffset = new Date().getTimezoneOffset() * 60000;
-
     // Inițializare chat
     window.addEventListener('DOMContentLoaded', () => {
       if (userName) {
@@ -263,6 +265,7 @@
       }
     });
 
+    // Funcție de adăugare mesaje în chat
     function addMessage(text, isUser) {
       const messageDiv = document.createElement('div');
       messageDiv.classList.add('message', isUser ? 'user' : 'bot');
@@ -306,15 +309,13 @@
       }
     }
 
-    // Funcție de parsare a datei cu corecția fusului orar
+    // Funcție de parsare a datei (fără offset de fus orar)
     function parseDate(input) {
       const now = new Date();
-      const weekdays = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbăta'];
+      const weekdays = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă'];
 
-      // Funcție internă de ajustare
-      const adjustTimezone = (date) => new Date(date.getTime() - timezoneOffset);
-
-      let finalDate = adjustTimezone(new Date(now));
+      // Începem de la data curentă
+      let finalDate = new Date(now);
 
       // Parsare zile săptămânii
       const weekdayMatch = input.match(new RegExp(`\\b(${weekdays.join('|')})\\b`, 'i'));
@@ -322,7 +323,9 @@
         const targetDay = weekdays.findIndex(d => d === weekdayMatch[1].toLowerCase());
         const currentDay = now.getDay();
         let dayOffset = targetDay - currentDay;
-        if (dayOffset <= 0) dayOffset += 7;
+        if (dayOffset < 0) {
+          dayOffset += 7;
+        }
         finalDate.setDate(now.getDate() + dayOffset);
       }
       else if (input.toLowerCase().includes('mâine')) {
@@ -370,49 +373,7 @@
       }
     }
 
-    // Returnează răspunsul final pe baza textului utilizatorului
-    async function handleUserMessage(text) {
-      try {
-        // Extrage nume
-        const name = extractUserName(text);
-        // Identifică serviciul
-        const serviceMatch = text.match(/pensat|masaj sculptural bucal|îngrijire facială/i);
-        // Parsează data
-        const date = parseDate(text);
-
-        // Verifică dacă avem de-a face cu o programare
-        if (name && serviceMatch && date) {
-          const isAvailable = await checkAvailability(date);
-          if (!isAvailable) {
-            return "⏰ Ne pare rău, intervalul este deja ocupat. Vă rugăm alegeți altă oră.";
-          }
-          const saved = await saveAppointment(name, date, serviceMatch[0]);
-          if (saved) {
-            const formattedDate = date.toLocaleString('ro-RO', {
-              timeZone: 'Europe/Bucharest',
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              hour: '2-digit',
-              minute: '2-digit'
-            });
-            return `✅ Programare confirmată!<br><br>
-              👤 ${name}<br>
-              📅 ${formattedDate}<br>
-              💼 ${serviceMatch[0]}`;
-          } else {
-            return "⚠️ Eroare la salvarea programării. Vă rugăm încercați din nou.";
-          }
-        }
-      } catch (error) {
-        console.error('Eroare programare:', error);
-      }
-
-      // Dacă nu e programare, încercăm răspunsul AI
-      return await getAIChatResponse(text);
-    }
-
-    // Funcție de afișare a programărilor în admin view
+    // Afișare programări în admin view
     async function showAppointments() {
       const appointmentsList = document.getElementById('appointmentsList');
       appointmentsList.innerHTML = '';
@@ -448,7 +409,48 @@
       });
     }
 
-    // Evenimentul principal - trimiterea mesajului de către utilizator
+    // Gestionarea logicii conversației
+    async function handleUserMessage(text) {
+      try {
+        // Extrage numele
+        const name = extractUserName(text);
+        // Identifică serviciul
+        const serviceMatch = text.match(/pensat|masaj sculptural bucal|îngrijire facială/i);
+        // Parsează data
+        const date = parseDate(text);
+
+        // Dacă pare a fi o cerere de programare
+        if (name && serviceMatch && date) {
+          const isAvailable = await checkAvailability(date);
+          if (!isAvailable) {
+            return "⏰ Ne pare rău, intervalul este deja ocupat. Vă rugăm alegeți altă oră.";
+          }
+          const saved = await saveAppointment(name, date, serviceMatch[0]);
+          if (saved) {
+            const formattedDate = date.toLocaleString('ro-RO', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            return `✅ Programare confirmată!<br><br>
+              👤 ${name}<br>
+              📅 ${formattedDate}<br>
+              💼 ${serviceMatch[0]}`;
+          } else {
+            return "⚠️ Eroare la salvarea programării. Vă rugăm încercați din nou.";
+          }
+        }
+      } catch (error) {
+        console.error('Eroare programare:', error);
+      }
+
+      // Dacă nu e programare, apelăm AI
+      return await getAIChatResponse(text);
+    }
+
+    // Eveniment la trimiterea mesajului de către utilizator
     sendButton.addEventListener('click', async () => {
       const text = userInput.value.trim();
       if (!text) return;
@@ -467,10 +469,12 @@
 
     // Intrare "Enter" în câmpul de text
     userInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') sendButton.click();
+      if (e.key === 'Enter') {
+        sendButton.click();
+      }
     });
 
-    // Funcționalitate buton Admin
+    // Buton Admin: toggle + refresh
     document.getElementById('toggleViewBtn').addEventListener('click', () => {
       const adminView = document.getElementById('adminView');
       adminView.style.display = adminView.style.display === 'none' ? 'block' : 'none';
@@ -479,7 +483,6 @@
       }
     });
 
-    // Reîmprospătare listă programări
     document.getElementById('refreshAppointments').addEventListener('click', showAppointments);
 
     // Adăugare programare din admin
@@ -499,7 +502,7 @@
       }
     });
 
-    // Buton de salvare a configurației chatbot (exemplu)
+    // Buton de salvare a configurației chatbot (exemplu simplu)
     document.getElementById('sendInstructionsBtn').addEventListener('click', () => {
       const instructions = document.getElementById('instructionsInput').value;
       console.log("Instrucțiuni chatbot:", instructions);
