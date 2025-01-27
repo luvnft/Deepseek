@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DeepSeek Chat</title>
+    <title>Stelmina - Salon de Înfrumusețare</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -53,6 +53,8 @@
             background: linear-gradient(90deg, 
                 rgba(16, 16, 32, 0.9) 0%,
                 rgba(32, 32, 64, 0.9) 100%);
+            display: flex;
+            align-items: center;
         }
 
         #chatbox {
@@ -136,23 +138,77 @@
             background: rgba(100, 255, 255, 0.3);
             border-radius: 3px;
         }
+
+        #adminView {
+            display: none;
+            padding: 1.5rem;
+        }
+
+        #adminView h2 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--neon-blue);
+            margin-bottom: 1rem;
+        }
+
+        #appointmentsList {
+            margin-top: 1rem;
+        }
+
+        .appointment {
+            background: rgba(32, 32, 64, 0.3);
+            border: 1px solid rgba(100, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            color: #e0e0ff;
+        }
+
+        textarea {
+            width: 100%;
+            background: rgba(8, 8, 16, 0.6);
+            border: 1px solid rgba(100, 255, 255, 0.2);
+            color: var(--neon-blue);
+            padding: 1rem;
+            border-radius: 12px;
+            margin-top: 1rem;
+        }
     </style>
 </head>
 <body>
     <canvas id="background-canvas"></canvas>
 
     <div class="chat-container">
+        <!-- Header -->
         <div class="chat-header">
             <h1 class="text-2xl font-bold text-[#64ffff]">
                 <i class="fas fa-robot mr-2"></i>
                 Stelmina
             </h1>
+            <button id="toggleViewBtn" class="ml-auto bg-[#3264ff] text-white px-4 py-2 rounded-lg">
+                <i class="fas fa-user-cog mr-2"></i> Admin
+            </button>
         </div>
 
+        <!-- Zona de chat pentru client -->
         <div id="chatbox">
             <div class="message bot">Bună! Sunt asistentul virtual al salonului Stelmina. Te ajut cu o programare? 🌟</div>
         </div>
 
+        <!-- Zona de admin -->
+        <div id="adminView">
+            <h2>Gestionare Programări</h2>
+            <button id="addAppointmentBtn" class="bg-[#3264ff] text-white px-4 py-2 rounded-lg">
+                <i class="fas fa-plus mr-2"></i> Adaugă Programare
+            </button>
+            <div id="appointmentsList"></div>
+            <textarea id="instructionsInput" placeholder="Scrie instrucțiuni pentru chatbot..."></textarea>
+            <button id="sendInstructionsBtn" class="bg-[#3264ff] text-white px-4 py-2 rounded-lg mt-2">
+                <i class="fas fa-paper-plane mr-2"></i> Trimite Instrucțiuni
+            </button>
+        </div>
+
+        <!-- Input pentru mesaje -->
         <div class="input-area">
             <input type="text" id="userInput" placeholder="Scrie mesajul tău...">
             <button id="sendButton">
@@ -162,6 +218,7 @@
     </div>
 
     <script>
+        // Particule pentru fundal
         class Particle {
             constructor(canvas, ctx) {
                 this.canvas = canvas;
@@ -169,16 +226,17 @@
                 this.x = Math.random() * canvas.width;
                 this.y = Math.random() * canvas.height;
                 this.velocity = {
-                    x: (Math.random() + 0.5) * 0.5,
-                    y: (Math.random() + 0.5) * 0.5
+                    x: (Math.random() - 0.5) * 0.5,
+                    y: (Math.random() - 0.5) * 0.5
                 };
-                this.radius = Math.random() * 2 + 0.5; this.baseRadius = this.radius;
+                this.radius = Math.random() * 2;
+                this.baseRadius = this.radius;
                 this.color = `rgba(100, 255, 255, ${Math.random() * 0.5})`;
             }
 
             draw() {
                 this.ctx.beginPath();
-                this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 5);
+                this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                 this.ctx.fillStyle = this.color;
                 this.ctx.fill();
             }
@@ -234,7 +292,7 @@
 
                     if (distance < 100) {
                         ctx.beginPath();
-                        ctx.strokeStyle = `rgba(100, 255, 255, ${0.3 - distance/50})`;
+                        ctx.strokeStyle = `rgba(100, 255, 255, ${0.3 - distance/100})`;
                         ctx.lineWidth = 0.5;
                         ctx.moveTo(p1.x, p1.y);
                         ctx.lineTo(p2.x, p2.y);
@@ -265,10 +323,35 @@
         init();
         animate();
 
+        // Funcționalități pentru chat și admin
         const chatbox = document.getElementById('chatbox');
         const userInput = document.getElementById('userInput');
         const sendButton = document.getElementById('sendButton');
+        const toggleViewBtn = document.getElementById('toggleViewBtn');
+        const adminView = document.getElementById('adminView');
+        const addAppointmentBtn = document.getElementById('addAppointmentBtn');
+        const appointmentsList = document.getElementById('appointmentsList');
+        const instructionsInput = document.getElementById('instructionsInput');
+        const sendInstructionsBtn = document.getElementById('sendInstructionsBtn');
 
+        let appointments = [];
+        let isAdminView = false;
+
+        // Schimbă între client și admin
+        toggleViewBtn.addEventListener('click', () => {
+            isAdminView = !isAdminView;
+            if (isAdminView) {
+                chatbox.style.display = 'none';
+                adminView.style.display = 'block';
+                toggleViewBtn.innerHTML = '<i class="fas fa-comments mr-2"></i> Client';
+            } else {
+                chatbox.style.display = 'block';
+                adminView.style.display = 'none';
+                toggleViewBtn.innerHTML = '<i class="fas fa-user-cog mr-2"></i> Admin';
+            }
+        });
+
+        // Adăugare mesaj în chat
         function addMessage(text, isUser) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
@@ -277,6 +360,7 @@
             chatbox.scrollTop = chatbox.scrollHeight;
         }
 
+        // Trimite mesaj
         async function sendMessage() {
             const prompt = userInput.value.trim();
             if (!prompt) return;
@@ -285,19 +369,48 @@
             userInput.value = '';
 
             try {
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt })
-                });
+                let reply = '';
+                if (prompt.toLowerCase().includes('programare')) {
+                    const date = new Date().toLocaleString();
+                    appointments.push({ client: "Client Nou", date });
+                    reply = `Programare adăugată pentru ${date}.`;
+                    renderAppointments();
+                } else {
+                    reply = `Am primit mesajul tău: "${prompt}".`;
+                }
 
-                const data = await response.json();
-                addMessage(data.reply, false);
+                addMessage(reply, false);
             } catch (error) {
                 addMessage('⚠️ Eroare de conexiune. Încearcă din nou.', false);
             }
         }
 
+        // Adăugare programare
+        addAppointmentBtn.addEventListener('click', () => {
+            const date = new Date().toLocaleString();
+            appointments.push({ client: "Client Nou", date });
+            renderAppointments();
+        });
+
+        // Afișare programări
+        function renderAppointments() {
+            appointmentsList.innerHTML = appointments.map(app => `
+                <div class="appointment">
+                    <strong>${app.client}</strong> - ${app.date}
+                </div>
+            `).join('');
+        }
+
+        // Trimite instrucțiuni către chatbot
+        sendInstructionsBtn.addEventListener('click', () => {
+            const instructions = instructionsInput.value.trim();
+            if (!instructions) return;
+
+            addMessage(`Instrucțiuni primite: ${instructions}`, false);
+            instructionsInput.value = '';
+        });
+
+        // Evenimente
         sendButton.addEventListener('click', sendMessage);
         userInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMessage();
