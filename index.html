@@ -7,7 +7,7 @@
 
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <!-- Tailwind CSS (folosit din CDN, deși nu este recomandat în producție) -->
+  <!-- Tailwind CSS (din CDN, nu e recomandat în producție) -->
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
@@ -162,22 +162,22 @@
     #adminView {
       display: none;
       padding: 1rem;
-      border-top: 1px solid rgba(249	203	156);
+      border-top: 1px solid rgba(100,255,255,0.1);
     }
 
-    /* Opțional, stil pentru listă de programări */
+    /* Lista de programări - text cu #c8ffff */
     #appointmentsList {
       margin-top: 1rem;
       padding: 0.5rem;
-      border: 1px solid rgba(249	203	156);
+      border: 1px solid rgba(100,255,255,0.2);
       border-radius: 6px;
       max-height: 200px;
       overflow-y: auto;
     }
-
     #appointmentsList div {
       padding: 0.25rem 0;
-      border-bottom: 1px solid rgba(249	203	156);
+      border-bottom: 1px solid rgba(100,255,255,0.1);
+      color: #c8ffff; /* cerut */
     }
   </style>
 </head>
@@ -201,14 +201,14 @@
     <div id="chatbox">
       <div class="message bot">
         Bună! ✨ Sunt asistentul virtual al salonului Stelmina. 
-        Cum vă pot ajuta astăzi? Vă rugăm să specificați:<br>
-        - Numele dumneavoastră complet<br>
-        - Data și ora dorită (ex. 28 ianuarie ora 10)<br>
-        - Serviciul solicitat (pensat, masaj sculptural bucal sau îngrijire facială)
+        <br><br>Te rog să precizezi:<br>
+        - Numele tău<br>
+        - Data și ora dorită (de ex. "28 ianuarie ora 10" sau "mâine la 2")<br>
+        - Serviciul (pensat, masaj sculptural bucal sau îngrijire facială)
       </div>
     </div>
 
-    <!-- Vedere Admin -->
+    <!-- Panou Admin -->
     <div id="adminView">
       <h2 class="text-xl font-semibold text-[#64ffff] mb-2">Gestionare Programări</h2>
       <button id="addAppointmentBtn" class="bg-[#3264ff] text-white px-4 py-2 rounded-lg">
@@ -285,7 +285,7 @@
     const instructionsInput = document.getElementById('instructionsInput');
     const sendInstructionsBtn = document.getElementById('sendInstructionsBtn');
 
-    // Blocare trimitere multiplă
+    // Prevenim trimiterea dublă
     let isSending = false;
 
     // -------------------------------------------------------------
@@ -300,90 +300,118 @@
     }
 
     // -------------------------------------------------------------
-    // Parsează data și ora (ex: "28 ianuarie ora 10")
+    // Identifică un nume (ex. "Vlad", "Ana"), încercând să evite textul lung
     // -------------------------------------------------------------
-    function parseDate(input) {
-      // Găsim ziua și luna
-      // Exemplu: "28 ianuarie" sau "28 ian"
-      const dateMatch = input.match(/(\d{1,2})\s+(ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie|ian|feb|mar|apr|iun|iul|aug|sept|oct|nov|dec)/i);
-      if (!dateMatch) return null;
-
-      const day = parseInt(dateMatch[1]);
-      // normalizăm numele lunii
-      const monthName = dateMatch[2].toLowerCase();
-      const months = [
-        'ianuarie','februarie','martie','aprilie','mai','iunie',
-        'iulie','august','septembrie','octombrie','noiembrie','decembrie'
-      ];
-      let month = months.indexOf(monthName);
-
-      // Dacă e prescurtare (ex: "ian"), mapăm
-      if (month === -1) {
-        const shortMap = {
-          ian: 0, feb: 1, mar: 2, apr: 3, mai: 4, iun: 5,
-          iul: 6, aug: 7, sept: 8, oct: 9, nov: 10, dec: 11
-        };
-        month = shortMap[monthName] ?? -1;
+    function extractUserName(text) {
+      // Mai întâi caută fraze "sunt X", "numele e X", "mă cheamă X"
+      const nameRegex = /\b(?:sunt|numele\s*(meu)?\s*e|mă cheamă)\s+([A-ZȘȚÂĂÎ][a-zA-ZăâîșțĂÂÎȘȚ]+)/i;
+      const match = text.match(nameRegex);
+      if (match) {
+        return match[2].trim();
       }
 
-      if (month === -1) return null; // nu a găsit o lună validă
-
-      // Căutăm ora (ex: "ora 10", "ora 10:30")
-      let hour = 0, minute = 0;
-      const hourMatch = input.match(/ora\s*(\d{1,2})(?:[:.](\d{1,2}))?/i);
-      if (hourMatch) {
-        hour = parseInt(hourMatch[1]);
-        if (hourMatch[2]) {
-          minute = parseInt(hourMatch[2]);
-        }
+      // Ca fallback, caut primul cuvânt care începe cu majusculă
+      const fallback = text.match(/\b[A-ZȘȚÂĂÎ][a-zA-ZăâîșțĂÂÎȘȚ]+/);
+      if (fallback) {
+        return fallback[0];
       }
-
-      // Stabilim anul (dacă e ianuarie și e deja trecut, eventual +1 an)
-      // Simplu: luăm anul curent
-      const now = new Date();
-      let year = now.getFullYear();
-
-      // Cream un obiect Date local (atentie la TZ)
-      const finalDate = new Date(year, month, day, hour, minute);
-
-      // Dacă data detectată e "în trecut" față de momentul curent (ex. l-ai scris la final de ianuarie), putem incrementa anul:
-      if (finalDate.getTime() < now.getTime()) {
-        finalDate.setFullYear(year + 1);
-      }
-
-      return finalDate; // obiect Date cu zi, lună, oră etc.
+      return "Client";
     }
 
     // -------------------------------------------------------------
-    // Extrage nume, serviciu și data dintr-un text
+    // Parsează data și ora, inclusiv "mâine" / "poimâine"
+    // -------------------------------------------------------------
+    function parseDate(input) {
+      const now = new Date();
+      let finalDate = null;
+      let foundAbsoluteDay = false;
+
+      // 1) Verificăm dacă user-ul a specificat un zi + lună (ex: "28 ianuarie")
+      const dateMatch = input.match(/(\d{1,2})\s+(ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie)/i);
+      if (dateMatch) {
+        foundAbsoluteDay = true;
+        const day = parseInt(dateMatch[1]);
+        const monthName = dateMatch[2].toLowerCase();
+        const months = [
+          'ianuarie','februarie','martie','aprilie','mai','iunie',
+          'iulie','august','septembrie','octombrie','noiembrie','decembrie'
+        ];
+        let monthIndex = months.indexOf(monthName);
+
+        // parse oră
+        let hour = 0, minute = 0;
+        // caut "ora 10", "la 10", "ora 10:30"
+        const hourMatch = input.match(/(ora|la)\s*(\d{1,2})(?:[:.](\d{1,2}))?/i);
+        if (hourMatch) {
+          hour = parseInt(hourMatch[2]);
+          minute = hourMatch[3] ? parseInt(hourMatch[3]) : 0;
+        }
+
+        let year = now.getFullYear();
+        finalDate = new Date(year, monthIndex, day, hour, minute);
+
+        // Dacă data e în trecut, punem anul următor
+        if (finalDate.getTime() < now.getTime()) {
+          finalDate.setFullYear(year + 1);
+        }
+      }
+
+      // 2) Dacă nu am găsit zi/lună, vedem dacă user-ul a zis "mâine" / "poimâine"
+      if (!foundAbsoluteDay) {
+        let dayOffset = 0;
+        if (/\bmâine\b/i.test(input)) {
+          dayOffset = 1;
+        } else if (/\bpoimâine\b/i.test(input)) {
+          dayOffset = 2;
+        } else {
+          // n-a dat "mâine", "poimâine" și nici zi/lună => nu știm data
+          return null;
+        }
+
+        finalDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOffset);
+
+        // parse oră (ex: "la 2", "ora 14")
+        const hourMatch = input.match(/(ora|la)\s*(\d{1,2})(?:[:.](\d{1,2}))?/i);
+        if (hourMatch) {
+          let h = parseInt(hourMatch[2]);
+          let m = hourMatch[3] ? parseInt(hourMatch[3]) : 0;
+          finalDate.setHours(h, m, 0, 0);
+        } else {
+          // dacă n-a specificat oră, default 10:00 (de ex.)
+          finalDate.setHours(10, 0, 0, 0);
+        }
+      }
+
+      return finalDate;
+    }
+
+    // -------------------------------------------------------------
+    // Extrage datele necesare (nume, serviciu, data) din text
     // -------------------------------------------------------------
     function extractAppointmentDetails(text) {
-      // 1. Nume (o secvență de litere, spații, diacritice)
-      const nameMatch = text.match(/[a-zA-ZăâîșțĂÂÎȘȚ ]+/);
-      // 2. Serviciu
+      const userName = extractUserName(text);
       const serviceMatch = text.match(/pensat|masaj sculptural bucal|îngrijire facială/i);
-      // 3. Data + ora
-      const parsed = parseDate(text);
+      const parsedDate = parseDate(text);
 
-      if (!nameMatch || !serviceMatch || !parsed) {
+      if (!userName || !serviceMatch || !parsedDate) {
         return null;
       }
 
       return {
-        name:    nameMatch[0].trim(),
+        name: userName,
         service: serviceMatch[0].toLowerCase(),
-        date:    parsed.toISOString()
+        date: parsedDate.toISOString()
       };
     }
 
     // -------------------------------------------------------------
     // Salvează o programare în Firestore
     // -------------------------------------------------------------
-    async function saveAppointment(clientName, date, service) {
+    async function saveAppointment(clientName, dateISO, service) {
       try {
         await addDoc(collection(db, "appointments"), {
           clientName: clientName,
-          date:       date,         // ISO string
+          date:       dateISO, // ISO
           service:    service,
           status:     'pending',
           timestamp:  new Date().toISOString()
@@ -396,7 +424,7 @@
     }
 
     // -------------------------------------------------------------
-    // Obține toate programările (ordonate descendent după timestamp)
+    // Preia toate programările (ordonate descendent după timestamp)
     // -------------------------------------------------------------
     async function getAppointments() {
       const q = query(collection(db, "appointments"), orderBy("timestamp", "desc"));
@@ -417,19 +445,18 @@
     // -------------------------------------------------------------
     async function showAppointments() {
       const appointmentsList = document.getElementById('appointmentsList');
-      appointmentsList.innerHTML = ''; // golim înainte să reafișăm
+      appointmentsList.innerHTML = ''; // goliți întâi
 
       const appointments = await getAppointments();
-
       // Parcurgem și afișăm
       appointments.forEach((apt) => {
         const item = document.createElement('div');
 
-        // transformăm apt.date (care e un string ISO) într-o formă umană
+        // Formatare data
         const dateObj = new Date(apt.date);
         const dateStr = dateObj.toLocaleString('ro-RO', {
-          day: 'numeric', 
-          month: 'long', 
+          day: 'numeric',
+          month: 'long',
           year: 'numeric',
           hour: '2-digit',
           minute: '2-digit'
@@ -444,40 +471,38 @@
     // Trimite mesajul scris de utilizator
     // -------------------------------------------------------------
     async function sendMessage() {
-      if (isSending) return; // prevenim trimitere multiplă
+      if (isSending) return;
 
       const rawPrompt = userInput.value.trim();
       if (!rawPrompt) return;
 
       isSending = true;
       sendButton.innerHTML = '<div class="loader"></div>';
-      sendButton.disabled  = true;
+      sendButton.disabled = true;
 
       try {
-        // Afișează mesaj user în chat
+        // Afișăm mesajul userului în chat
         addMessage(rawPrompt, true);
         userInput.value = '';
 
-        // Verifică dacă user-ul a dat date pentru o programare
+        // Verificăm dacă e text cu detalii de programare
         const details = extractAppointmentDetails(rawPrompt);
         if (details) {
-          // Salvăm în Firestore
           const saved = await saveAppointment(details.name, details.date, details.service);
           if (saved) {
-            // Formatez data pentru mesajul de confirmare
             const dateObj = new Date(details.date);
-            const formattedDate = dateObj.toLocaleString('ro-RO', {
-              day:   'numeric',
+            const niceDate = dateObj.toLocaleString('ro-RO', {
+              day: 'numeric',
               month: 'long',
-              year:  'numeric',
-              hour:  '2-digit',
-              minute:'2-digit'
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
             });
             addMessage(
-              `Programarea ta pentru ${details.service} pe ${formattedDate} a fost înregistrată cu succes!`,
+              `Programarea ta pentru ${details.service} pe ${niceDate} a fost înregistrată cu succes!`,
               false
             );
-            return; // ne oprim, am răspuns deja
+            return; // Ne oprim aici, am răspuns deja
           } else {
             addMessage('Ne pare rău, a apărut o eroare la salvarea programării. ☹️', false);
             return;
@@ -494,9 +519,8 @@
         if (!response.ok) {
           throw new Error(`Eroare server: ${response.status}`);
         }
-
         const data = await response.json();
-        // Curățăm HTML-ul
+
         addMessage(data.reply.replace(/<\/?[^>]+(>|$)/g, ""), false);
 
       } catch (error) {
@@ -505,7 +529,7 @@
       } finally {
         isSending = false;
         sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
-        sendButton.disabled  = false;
+        sendButton.disabled = false;
       }
     }
 
@@ -513,7 +537,6 @@
     // Evenimente butoane și input
     // -------------------------------------------------------------
     sendButton.addEventListener('click', sendMessage);
-
     userInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -521,17 +544,15 @@
       }
     });
 
-    // Buton de adăugare manuală a unei programări din AdminView
+    // Admin: adăugare manuală programare
     addAppointmentBtn.addEventListener('click', async () => {
       const clientName = prompt("Nume client:");
       if (!clientName) return;
 
-      // Format exemplu: 2025-01-28 10:00
       const dateInput = prompt("Data și ora (ex: 2025-01-28 10:00):");
       if (!dateInput) return;
 
-      // Serviciu
-      const service = prompt("Ce serviciu? (ex: pensat, masaj sculptural bucal, îngrijire facială)");
+      const service = prompt("Ce serviciu? (pensat, masaj sculptural bucal, îngrijire facială)");
       if (!service) return;
 
       // Convertim la ISO
@@ -540,14 +561,13 @@
       const saved = await saveAppointment(clientName, isoDate, service);
       if (saved) {
         addMessage(`Programare salvată: ${clientName} - ${dateInput} - ${service}`, false);
-        // Reactualizăm lista
         showAppointments();
       } else {
         addMessage('Eroare la salvarea programării.', false);
       }
     });
 
-    // Trimite instrucțiuni către chatbot (deocamdată doar apare în chat)
+    // Trimite instrucțiuni către chatbot (doar apare în chat deocamdată)
     sendInstructionsBtn.addEventListener('click', () => {
       const instructions = instructionsInput.value.trim();
       if (!instructions) return;
@@ -562,7 +582,7 @@
     function toggleAdminView() {
       if (adminView.style.display === 'none') {
         adminView.style.display = 'block';
-        showAppointments(); // Când se deschide, afișăm toate programările
+        showAppointments();
       } else {
         adminView.style.display = 'none';
       }
@@ -570,7 +590,7 @@
     toggleViewBtn.addEventListener('click', toggleAdminView);
 
     // -------------------------------------------------------------
-    // Prevenție scroll pe mobil (să nu scrolleze tot site-ul)
+    // Prevenție scroll pe mobil
     // -------------------------------------------------------------
     let isTouchingChat = false;
     chatbox.addEventListener('touchstart', () => isTouchingChat = true);
