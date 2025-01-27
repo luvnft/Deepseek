@@ -1,4 +1,4 @@
-// pages/api/chat.js (exemplu Next.js, cu memorie)
+// pages/api/chat.js
 export default async (req, res) => {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
@@ -7,10 +7,11 @@ export default async (req, res) => {
 
   try {
     const { conversation } = req.body;
-    if(!conversation || !Array.isArray(conversation)) {
+    if (!conversation || !Array.isArray(conversation)) {
       throw new Error('Lipsește array-ul conversation');
     }
 
+    // Prompt de sistem
     const systemPrompt = `
       Acționezi ca asistent virtual profesional pentru salonul Stelmina.
       Servicii disponibile:
@@ -27,10 +28,11 @@ export default async (req, res) => {
     `;
 
     const messages = [
-      { role: "system", content: systemPrompt },
+      { role: 'system', content: systemPrompt },
       ...conversation
     ];
 
+    // Exemplu: DeepSeek API
     const apiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -52,7 +54,6 @@ export default async (req, res) => {
     }
 
     const data = await apiResponse.json();
-
     res.setHeader('Access-Control-Allow-Origin', '*');
 
     const cleanReply = data.choices[0].message.content
@@ -60,15 +61,13 @@ export default async (req, res) => {
       .trim();
 
     res.status(200).json({ reply: cleanReply });
-
   } catch (error) {
     console.error('Eroare API:', {
       error: error.message,
       requestBody: req.body,
       timestamp: new Date().toISOString()
     });
-    
-    res.status(500).json({ 
+    res.status(500).json({
       reply: '⏳ Momentan avem dificultăți tehnice. Vă rugăm să încercați mai târziu sau să ne contactați telefonic.'
     });
   }
