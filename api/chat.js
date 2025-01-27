@@ -16,7 +16,7 @@ export default async (req, res) => {
 
       Instrucțiuni stricte:
       - Răspunsuri concise în română (max. 3 propoziții)
-      - Cere nume, dată, oră, serviciu
+      - Cere nume, dată, oră, serviciu doar când utilizatorul vrea o programare
       - Nu inventa prețuri/servicii
       - Folosește moderat emoji (max 2)
       - Dacă nu știi, spune că vei verifica
