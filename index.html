@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="ro">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no" />
   <title>Stelmina - Salon de Înfrumusețare</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css' rel='stylesheet'>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js'></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
 
   <style>
     :root {
@@ -39,15 +39,17 @@
       box-shadow: 0 0 40px rgba(100,255,255,0.1);
       display: flex;
       flex-direction: column;
-      z-index: 1;
+      z-index: 10;
     }
 
+    /* Chat Header */
     .chat-header {
       padding: 1.5rem;
       border-bottom: 1px solid rgba(100,255,255,0.1);
       background: linear-gradient(90deg, rgba(16,16,32,0.9) 0%, rgba(32,32,64,0.9) 100%);
       display: flex;
       align-items: center;
+      gap: 1rem;
     }
 
     #chatbox {
@@ -81,8 +83,14 @@
     }
 
     @keyframes messagePop {
-      0% { opacity: 0; transform: translateY(20px); }
-      100% { opacity: 1; transform: translateY(0); }
+      0% {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .input-area {
@@ -117,15 +125,33 @@
       box-shadow: 0 0 20px rgba(100,255,255,0.3);
     }
 
+    /* Admin View - more modern with Tailwind */
     #adminView {
       display: none;
-      padding: 1.5rem;
       border-top: 1px solid rgba(100,255,255,0.1);
+      overflow-y: auto;
+      max-height: 500px;
+    }
+
+    .admin-content {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      background: rgba(32,32,64,0.7);
+    }
+
+    .admin-card {
+      background: rgba(16,16,32,0.8);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(100,255,255,0.2);
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 0 10px rgba(100,255,255,0.1);
     }
 
     #appointmentsList {
       margin-top: 1rem;
-      border: 1px solid rgba(100,255,255,0.2);
       border-radius: 8px;
       overflow: hidden;
     }
@@ -134,7 +160,7 @@
       padding: 1rem;
       border-bottom: 1px solid rgba(100,255,255,0.1);
       display: grid;
-      grid-template-columns: 1fr 2fr 1.5fr;
+      grid-template-columns: 1fr 2fr 1fr;
       gap: 1rem;
       align-items: center;
       background: rgba(16,16,32,0.6);
@@ -146,10 +172,12 @@
     }
 
     #calendar {
-      background: rgba(16,16,32,0.9);
+      background: rgba(16,16,32,0.8);
       border-radius: 12px;
       padding: 1rem;
       margin: 1rem 0;
+      border: 1px solid rgba(100,255,255,0.2);
+      box-shadow: 0 0 10px rgba(100,255,255,0.1);
     }
 
     .fc-toolbar-title {
@@ -163,13 +191,13 @@
         left: 10px;
         right: 10px;
       }
-      
+
       .message {
         max-width: 95%;
         font-size: 14px;
         padding: 8px;
       }
-      
+
       #userInput {
         padding: 8px;
         font-size: 14px;
@@ -185,48 +213,73 @@
 </head>
 <body>
   <div class="chat-container">
+    <!-- Header -->
     <div class="chat-header">
-      <h1 class="text-2xl font-bold text-[#64ffff]">
-        <i class="fas fa-robot mr-2"></i>
+      <h1 class="text-2xl font-bold text-[#64ffff] flex items-center gap-2">
+        <i class="fas fa-robot"></i>
         Stelmina
       </h1>
-      <button id="toggleViewBtn" class="ml-auto bg-[#3264ff] hover:bg-[#64ffff] text-white px-4 py-2 rounded-lg transition-all">
+      <button
+        id="toggleViewBtn"
+        class="ml-auto bg-[#3264ff] hover:bg-[#64ffff] text-white px-4 py-2 rounded-lg transition-all"
+      >
         <i class="fas fa-user-cog mr-2"></i> Admin
       </button>
     </div>
 
+    <!-- Chatbox -->
     <div id="chatbox"></div>
 
+    <!-- Admin Panel -->
     <div id="adminView">
-      <div id="calendar"></div>
-      
-      <h2 class="text-xl font-semibold text-[#64ffff] mb-4">
-        <i class="fas fa-calendar-alt mr-2"></i>Programări
-      </h2>
-      
-      <div class="flex gap-4 mb-4">
-        <button id="addAppointmentBtn" class="bg-[#3264ff] hover:bg-[#64ffff] text-white px-4 py-2 rounded-lg transition-all">
-          <i class="fas fa-plus mr-2"></i>Adaugă
-        </button>
-        <button id="refreshAppointments" class="bg-[#3264ff] hover:bg-[#64ffff] text-white px-4 py-2 rounded-lg transition-all">
-          <i class="fas fa-sync-alt mr-2"></i>Actualizează
-        </button>
-      </div>
+      <div class="admin-content">
+        <div class="admin-card">
+          <div id="calendar"></div>
+        </div>
 
-      <div id="appointmentsList" class="rounded-b-lg"></div>
+        <h2 class="text-xl font-semibold text-[#64ffff] mt-4 flex items-center gap-2">
+          <i class="fas fa-calendar-alt"></i> Programări
+        </h2>
 
-      <div class="mt-6">
-        <h3 class="text-lg font-semibold text-[#64ffff] mb-3">Statistici</h3>
-        <canvas id="reportsChart" class="bg-[#0a0a1a] p-4 rounded-lg"></canvas>
+        <div class="flex gap-4">
+          <button
+            id="addAppointmentBtn"
+            class="bg-[#3264ff] hover:bg-[#64ffff] text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2"
+          >
+            <i class="fas fa-plus"></i>Adaugă
+          </button>
+          <button
+            id="refreshAppointments"
+            class="bg-[#3264ff] hover:bg-[#64ffff] text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2"
+          >
+            <i class="fas fa-sync-alt"></i>Actualizează
+          </button>
+        </div>
+
+        <div id="appointmentsList" class="admin-card mt-4"></div>
+
+        <div class="admin-card mt-4">
+          <h3 class="text-lg font-semibold text-[#64ffff] mb-3 flex items-center gap-2">
+            <i class="fas fa-chart-pie"></i> Statistici
+          </h3>
+          <canvas id="reportsChart" class="bg-[#0a0a1a] p-4 rounded-lg"></canvas>
+        </div>
       </div>
     </div>
 
+    <!-- Input Area -->
     <div class="input-area">
-      <input type="text" id="userInput" placeholder="Scrie mesajul tău..." maxlength="200" list="services">
+      <input
+        type="text"
+        id="userInput"
+        placeholder="Scrie mesajul tău..."
+        maxlength="200"
+        list="services"
+      />
       <datalist id="services">
-        <option value="Pensat">
-        <option value="Masaj Sculptural">
-        <option value="Îngrijire facială">
+        <option value="Pensat" />
+        <option value="Masaj Sculptural" />
+        <option value="Îngrijire facială" />
       </datalist>
       <button id="sendButton">
         <i class="fas fa-paper-plane"></i>
@@ -234,11 +287,12 @@
     </div>
   </div>
 
+  <!-- Script Principal -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
-    import { 
-      getFirestore, 
-      collection, 
+    import {
+      getFirestore,
+      collection,
       addDoc,
       getDocs,
       query,
@@ -249,7 +303,7 @@
       updateDoc
     } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
 
-    // -- Firebase Config --
+    // -- Config Firebase --
     const firebaseConfig = {
       apiKey: "AIzaSyBwCFGYsXp5zjWIHAcQbOmdd31e7bDN8mk",
       authDomain: "stelmina-19617.firebaseapp.com",
@@ -262,22 +316,24 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    let chartInstance = null; 
+    let chartInstance = null;
 
-    const chatbox       = document.getElementById('chatbox');
-    const userInput     = document.getElementById('userInput');
-    const sendButton    = document.getElementById('sendButton');
-    const adminView     = document.getElementById('adminView');
-    const toggleViewBtn = document.getElementById('toggleViewBtn');
+    // DOM refs
+    const chatbox       = document.getElementById("chatbox");
+    const userInput     = document.getElementById("userInput");
+    const sendButton    = document.getElementById("sendButton");
+    const adminView     = document.getElementById("adminView");
+    const toggleViewBtn = document.getElementById("toggleViewBtn");
 
-    let userName = localStorage.getItem('chatbotUserName') || null;
+    // Păstrăm numele user-ului în localStorage
+    let userName = localStorage.getItem("chatbotUserName") || null;
 
-    // ------------------------------------------------------
-    // 1) Istoric chat (localStorage)
-    // ------------------------------------------------------
-    const loadChatHistory = () => {
-      const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
-      history.forEach(msg => addMessage(msg.text, msg.isUser, false));
+    // -------------------------------------------------------
+    // 1) Chat + localStorage
+    // -------------------------------------------------------
+    function loadChatHistory() {
+      const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
+      history.forEach((msg) => addMessage(msg.text, msg.isUser, false));
       if (history.length === 0) {
         addMessage(
           `Bună! ✨ Sunt asistentul virtual al salonului Stelmina.<br>
@@ -286,38 +342,40 @@
           false
         );
       }
-    };
-    window.addEventListener('DOMContentLoaded', loadChatHistory);
+    }
+    window.addEventListener("DOMContentLoaded", loadChatHistory);
 
     function addMessage(text, isUser, save = true) {
-      const messageDiv = document.createElement('div');
-      messageDiv.classList.add('message', isUser ? 'user' : 'bot');
+      const messageDiv = document.createElement("div");
+      messageDiv.classList.add("message", isUser ? "user" : "bot");
       messageDiv.innerHTML = text;
       chatbox.appendChild(messageDiv);
       chatbox.scrollTop = chatbox.scrollHeight;
 
-      if(save) {
-        const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
+      if (save) {
+        const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
         history.push({ text, isUser });
-        localStorage.setItem('chatHistory', JSON.stringify(history));
+        localStorage.setItem("chatHistory", JSON.stringify(history));
       }
     }
 
-    // ------------------------------------------------------
-    // 2) Validări + parse data
-    // ------------------------------------------------------
-    const validateName = (name) => /^[A-Za-zȘșȚțÂâÎîĂă\s]{2,30}$/.test(name);
+    // -------------------------------------------------------
+    // 2) Validări / Parse Date
+    // -------------------------------------------------------
+    const validateName = (name) =>
+      /^[A-Za-zȘșȚțÂâÎîĂă\s]{2,30}$/.test(name);
 
+    // Extins: detectăm inclusiv "pe numele Vlad"
     function extractUserName(text) {
       const patterns = [
+        /pe\s+numele\s+([A-Za-zȘșȚțÂâÎîĂă]+)/i,
         /(?:sunt|numele\s*(meu)?\s*este?|mă\s*cheamă)\s+([A-Za-zȘșȚțÂâÎîĂă]+)/i,
         /\b([A-ZȘȚÂĂÎ][a-zșțâîă]+)\b/
       ];
       for (const pattern of patterns) {
         const match = text.match(pattern);
         if (match) {
-          const extracted = (match[2] || match[1]).trim();
-          return extracted;
+          return (match[2] || match[1]).trim();
         }
       }
       return null;
@@ -327,16 +385,16 @@
       const now = new Date();
       const minDate = new Date(now.getTime() + 30 * 60000);
       const maxDate = new Date(now.setMonth(now.getMonth() + 3));
-      
-      if(date < minDate) {
-        throw new Error('Data trebuie să fie cu minim 30 de minute în viitor');
+
+      if (date < minDate) {
+        throw new Error("Data trebuie să fie cu minim 30 de minute în viitor");
       }
-      if(date > maxDate) {
-        throw new Error('Putem programa maxim 3 luni în avans');
+      if (date > maxDate) {
+        throw new Error("Putem programa maxim 3 luni în avans");
       }
       const hours = date.getHours();
-      if(hours < 9 || hours >= 20) {
-        throw new Error('Programăm doar între 9:00 și 20:00');
+      if (hours < 9 || hours >= 20) {
+        throw new Error("Programăm doar între 9:00 și 20:00");
       }
       return true;
     }
@@ -344,55 +402,81 @@
     function parseDate(input) {
       const now = new Date();
       const finalDate = new Date(now);
+
       const romanianMonths = {
-        'ianuarie': 0, 'februarie': 1, 'martie': 2, 'aprilie': 3,
-        'mai': 4, 'iunie': 5, 'iulie': 6, 'august': 7,
-        'septembrie': 8, 'octombrie': 9, 'noiembrie': 10, 'decembrie': 11
+        ianuarie: 0,
+        februarie: 1,
+        martie: 2,
+        aprilie: 3,
+        mai: 4,
+        iunie: 5,
+        iulie: 6,
+        august: 7,
+        septembrie: 8,
+        octombrie: 9,
+        noiembrie: 10,
+        decembrie: 11
       };
 
-      const dateMatch = input.match(/(\d{1,2})\s+(ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie)\s*(ora)?\s*(\d{1,2})?/i);
+      // Căutăm "25 ianuarie ora 10"
+      const dateMatch = input.match(
+        /(\d{1,2})\s+(ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie)(?:\s*ora)?\s*(\d{1,2})?/i
+      );
       if (dateMatch) {
         const day = parseInt(dateMatch[1], 10);
         const month = romanianMonths[dateMatch[2].toLowerCase()];
         finalDate.setFullYear(now.getFullYear(), month, day);
-        if (dateMatch[4]) {
-          const hours = parseInt(dateMatch[4], 10);
+        if (dateMatch[3]) {
+          const hours = parseInt(dateMatch[3], 10);
           finalDate.setHours(hours, 0, 0, 0);
         }
       } else {
-        // Zile săptămână
-        const weekdays = ['duminică','luni','marți','miercuri','joi','vineri','sâmbătă'];
-        const weekdayMatch = input.match(new RegExp(`\\b(${weekdays.join('|')})\\b`, 'i'));
+        // Zilele săptămânii
+        const weekdays = [
+          "duminică",
+          "luni",
+          "marți",
+          "miercuri",
+          "joi",
+          "vineri",
+          "sâmbătă"
+        ];
+        const weekdayMatch = input.match(
+          new RegExp(`\\b(${weekdays.join("|")})\\b`, "i")
+        );
         if (weekdayMatch) {
-          const targetDay = weekdays.findIndex(d => d === weekdayMatch[1].toLowerCase());
+          const targetDay = weekdays.findIndex(
+            (d) => d === weekdayMatch[1].toLowerCase()
+          );
           const currentDay = now.getDay();
           let dayOffset = targetDay - currentDay;
           if (dayOffset < 0) dayOffset += 7;
           finalDate.setDate(now.getDate() + dayOffset);
-        } else if (input.toLowerCase().includes('mâine')) {
+        } else if (input.toLowerCase().includes("mâine")) {
           finalDate.setDate(now.getDate() + 1);
         }
-        // Ora
-        const timeMatch = input.match(/(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?/i);
+
+        // Căutăm ora "10", "10:30", "ora 10"
+        const timeMatch = input.match(/(?:ora\s+)?(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?/i);
         if (timeMatch) {
           let hours = parseInt(timeMatch[1], 10);
           const minutes = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
           const period = timeMatch[3]?.toLowerCase();
-          if (period === 'pm' && hours < 12) hours += 12;
-          if (period === 'am' && hours === 12) hours = 0;
+          if (period === "pm" && hours < 12) hours += 12;
+          if (period === "am" && hours === 12) hours = 0;
           finalDate.setHours(hours, minutes, 0, 0);
         }
       }
 
-      if (finalDate.toString() === 'Invalid Date') {
-        throw new Error('Dată invalidă');
+      if (finalDate.toString() === "Invalid Date") {
+        throw new Error("Dată invalidă");
       }
       return finalDate;
     }
 
-    // ------------------------------------------------------
-    // 3) Firestore: checkAvailability + saveAppointment
-    // ------------------------------------------------------
+    // -------------------------------------------------------
+    // 3) Firestore - check + save
+    // -------------------------------------------------------
     async function checkAvailability(date) {
       const start = new Date(date);
       start.setMinutes(0, 0, 0);
@@ -401,7 +485,7 @@
 
       const colRef = collection(db, "appointments");
       const qDate = query(
-        colRef, 
+        colRef,
         where("date", ">=", start.toISOString()),
         where("date", "<=", end.toISOString())
       );
@@ -425,154 +509,158 @@
       }
     }
 
-    // ------------------------------------------------------
-    // 4) AI Chat cu memorie (trimitem TOT istoricul)
-    // ------------------------------------------------------
+    // -------------------------------------------------------
+    // 4) Chat AI cu memorie (trimitem tot istoricul)
+    // -------------------------------------------------------
     function buildConversationArray() {
-      const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
-      return history.map(msg => {
-        return msg.isUser 
-          ? { role: 'user', content: msg.text }
-          : { role: 'assistant', content: msg.text };
-      });
+      const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
+      return history.map((msg) =>
+        msg.isUser
+          ? { role: "user", content: msg.text }
+          : { role: "assistant", content: msg.text }
+      );
     }
 
     async function getAIChatResponse() {
       try {
         const conversation = buildConversationArray();
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ conversation })
         });
         const data = await response.json();
         return data.reply;
       } catch (error) {
-        console.error('Eroare la AI Chat:', error);
-        return '⏳ Momentan avem dificultăți tehnice. Vă rugăm să încercați mai târziu.';
+        console.error("Eroare la AI Chat:", error);
+        return "⏳ Momentan avem dificultăți tehnice. Vă rugăm să încercați mai târziu.";
       }
     }
 
-    // ------------------------------------------------------
-    // 5) Decide local dacă user-ul cere programare
-    // ------------------------------------------------------
+    // -------------------------------------------------------
+    // 5) Decizie locală: e programare sau discuție?
+    // -------------------------------------------------------
     function isBookingRequest(text) {
-      return /\b(programare|programez|rezerv|vreau o programare|doresc programare)\b/i.test(text);
+      return /\b(programare|programez|rezerv|vreau o programare|doresc programare)\b/i.test(
+        text
+      );
     }
 
     async function handleUserMessage(text) {
-      // 1) Dacă NU e booking, chemăm AI
-      if(!isBookingRequest(text)) {
-        return await getAIChatResponse(); 
+      if (!isBookingRequest(text)) {
+        // Nu e booking => AI normal
+        return await getAIChatResponse();
       }
 
-      // 2) E Booking => parse logic local, salvez in Firestore
+      // E booking => parse local data, salvăm
       try {
         let name = extractUserName(text) || userName;
-        if(!name) {
+        if (!name) {
           return "Am nevoie de numele tău pentru a face o programare. Cum te cheamă?";
         }
-        if(!validateName(name)) {
-          return "⚠️ Nume invalid. Folosește doar litere și spații, 2-30 caractere.";
+        if (!validateName(name)) {
+          return "⚠️ Nume invalid. Folosește doar litere și spații (2-30 caractere).";
         }
-        localStorage.setItem('chatbotUserName', name);
+        localStorage.setItem("chatbotUserName", name);
 
-        // cautam ce serviciu vrea
-        const serviceMatch = text.match(/pensat|masaj\s*sculptural|îngrijire\s*facială/i);
-        if(!serviceMatch) {
+        // serviciu: pensat, masaj sculptural, îngrijire facială
+        const serviceMatch = text.match(
+          /pensat|masaj\s*sculptural|îngrijire\s*facială/i
+        );
+        if (!serviceMatch) {
           return "Te rog să îmi spui ce serviciu dorești (Pensat, Masaj Sculptural, Îngrijire facială).";
         }
         const service = serviceMatch[0].toLowerCase();
 
-        // parse date (din ultimul mesaj)
+        // parse date
         const date = parseDate(text);
         validateDateTime(date);
 
         // check disponibilitate
-        const free = await checkAvailability(date);
-        if(!free) {
+        const isFree = await checkAvailability(date);
+        if (!isFree) {
           return "⏰ Intervalul este ocupat. Alege, te rog, altă oră!";
         }
 
-        // salvăm in Firestore
+        // salvăm
         const saved = await saveAppointment(name, date, service);
-        if(saved) {
-          const dateStr = date.toLocaleString('ro-RO', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-            hour: '2-digit',
-            minute: '2-digit'
+        if (saved) {
+          const dateStr = date.toLocaleString("ro-RO", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            hour: "2-digit",
+            minute: "2-digit"
           });
           return `Programare făcută, ${name}! Te așteptăm ${dateStr} pentru ${service}.`;
-        } else {
-          // fallback la AI (doar daca e vreo eroare la save)
-          return await getAIChatResponse();
         }
 
+        // fallback la AI
+        return await getAIChatResponse();
       } catch (err) {
-        // Poate e dată invalidă, user nu a dat oră clară etc.
         return `⚠️ Eroare: ${err.message}`;
       }
     }
 
-    // ------------------------------------------------------
-    // 6) Event Listeners: trimitem mesaje
-    // ------------------------------------------------------
-    sendButton.addEventListener('click', async () => {
+    // -------------------------------------------------------
+    // 6) Trimitem mesaje
+    // -------------------------------------------------------
+    sendButton.addEventListener("click", async () => {
       const text = userInput.value.trim();
-      if(!text) return;
-      
-      userInput.value = '';
+      if (!text) return;
+
+      userInput.value = "";
       addMessage(text, true);
 
       const response = await handleUserMessage(text);
       addMessage(response, false);
     });
 
-    userInput.addEventListener('keypress', (e) => {
-      if(e.key === 'Enter') sendButton.click();
+    userInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        sendButton.click();
+      }
     });
 
-    // ------------------------------------------------------
-    // 7) Admin Tab + Calendar + Stats
-    // ------------------------------------------------------
-    toggleViewBtn.addEventListener('click', () => {
-      const password = prompt('Introdu parola admin:');
-      if(password === '1234') {
-        adminView.style.display = (adminView.style.display === 'none') ? 'block' : 'none';
-        if(adminView.style.display === 'block') {
+    // -------------------------------------------------------
+    // 7) Admin: Calendar, Listă programări, Statistici
+    // -------------------------------------------------------
+    toggleViewBtn.addEventListener("click", () => {
+      const password = prompt("Introdu parola admin:");
+      if (password === "1234") {
+        adminView.style.display = adminView.style.display === "none" ? "block" : "none";
+        if (adminView.style.display === "block") {
           showAppointments();
           initCalendar();
           generateReports();
         }
       } else {
-        alert('Parolă incorectă!');
+        alert("Parolă incorectă!");
       }
     });
 
     async function fetchAppointmentsAsEvents() {
       const qAll = query(collection(db, "appointments"));
       const snapshot = await getDocs(qAll);
-      return snapshot.docs.map(docA => ({
+      return snapshot.docs.map((docA) => ({
         title: `${docA.data().service} - ${docA.data().clientName}`,
         start: docA.data().date
       }));
     }
 
     async function initCalendar() {
-      const calendarEl = document.getElementById('calendar');
+      const calendarEl = document.getElementById("calendar");
       const eventsData = await fetchAppointmentsAsEvents();
       const calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'timeGridWeek',
+        initialView: "timeGridWeek",
         events: eventsData,
         headerToolbar: {
-          left: 'prev,next today',
-          center: 'title',
-          right: 'dayGridMonth,timeGridWeek,timeGridDay'
+          left: "prev,next today",
+          center: "title",
+          right: "dayGridMonth,timeGridWeek,timeGridDay"
         },
-        eventColor: '#64ffff',
-        eventTextColor: '#0a0a1a'
+        eventColor: "#64ffff",
+        eventTextColor: "#0a0a1a"
       });
       calendar.render();
     }
@@ -580,74 +668,80 @@
     async function generateReports() {
       const snapshot = await getDocs(collection(db, "appointments"));
       const servicesCount = {};
-      snapshot.forEach(docA => {
+
+      snapshot.forEach((docA) => {
         const s = docA.data().service;
         servicesCount[s] = (servicesCount[s] || 0) + 1;
       });
 
-      if(chartInstance) chartInstance.destroy();
-      
-      const ctx = document.getElementById('reportsChart').getContext('2d');
+      if (chartInstance) chartInstance.destroy();
+
+      const ctx = document.getElementById("reportsChart").getContext("2d");
       chartInstance = new Chart(ctx, {
-        type: 'pie',
+        type: "pie",
         data: {
           labels: Object.keys(servicesCount),
-          datasets: [{
-            data: Object.values(servicesCount),
-            backgroundColor: ['#64ffff', '#3264ff', '#1a1a3a'],
-            borderColor: '#0a0a1a'
-          }]
+          datasets: [
+            {
+              data: Object.values(servicesCount),
+              backgroundColor: ["#64ffff", "#3264ff", "#1a1a3a"],
+              borderColor: "#0a0a1a"
+            }
+          ]
         }
       });
     }
 
     async function showAppointments() {
-      const appointmentsList = document.getElementById('appointmentsList');
-      appointmentsList.innerHTML = '';
+      const appointmentsList = document.getElementById("appointmentsList");
+      appointmentsList.innerHTML = "";
 
       const qAll = query(collection(db, "appointments"), orderBy("timestamp", "desc"));
       const querySnapshot = await getDocs(qAll);
 
       querySnapshot.forEach((docSnap) => {
         const data = docSnap.data();
-        const item = document.createElement('div');
-        item.className = 'appointment-item grid grid-cols-3 gap-4';
+        const item = document.createElement("div");
+        item.className = "appointment-item";
 
-        const date = new Date(data.date).toLocaleString('ro-RO', {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
-          hour: '2-digit',
-          minute: '2-digit'
+        const date = new Date(data.date).toLocaleString("ro-RO", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          hour: "2-digit",
+          minute: "2-digit"
         });
 
         item.innerHTML = `
-          <div class="appointment-name">${data.clientName}</div>
+          <div class="appointment-name font-semibold text-[#64ffff]">${data.clientName}</div>
           <div class="appointment-time">${date}</div>
-          <div class="appointment-service">${data.service}</div>
-          <div class="col-span-3 flex gap-2 justify-end">
-            <button class="edit-btn px-2 py-1 bg-blue-600 rounded" data-id="${docSnap.id}">
+          <div class="appointment-service capitalize">${data.service}</div>
+          <div class="col-span-3 flex gap-2 justify-end mt-2">
+            <button class="edit-btn px-2 py-1 bg-blue-600 rounded text-white" data-id="${docSnap.id}">
               <i class="fas fa-edit"></i>
             </button>
-            <button class="delete-btn px-2 py-1 bg-red-600 rounded" data-id="${docSnap.id}">
+            <button class="delete-btn px-2 py-1 bg-red-600 rounded text-white" data-id="${docSnap.id}">
               <i class="fas fa-trash"></i>
             </button>
           </div>
         `;
 
-        // Stergere
-        item.querySelector('.delete-btn').addEventListener('click', async (e) => {
-          const docId = e.target.closest('button').dataset.id;
+        // Ștergere
+        item.querySelector(".delete-btn").addEventListener("click", async (e) => {
+          const docId = e.target.closest("button").dataset.id;
           await deleteDoc(doc(db, "appointments", docId));
           showAppointments();
           generateReports();
         });
 
         // Editare
-        item.querySelector('.edit-btn').addEventListener('click', async (e) => {
-          const docId = e.target.closest('button').dataset.id;
-          const newDateInput = prompt('Noua dată (ex: "joi 15:30"):', date);
-          if(newDateInput) {
+        item.querySelector(".edit-btn").addEventListener("click", async (e) => {
+          const docId = e.target.closest("button").dataset.id;
+          const newDateInput = prompt(
+            "Noua dată (ex: joi 15:30). Momentan e:",
+            date
+          );
+          if (newDateInput) {
             try {
               const parsedDate = parseDate(newDateInput);
               validateDateTime(parsedDate);
@@ -666,27 +760,27 @@
       });
     }
 
-    document.getElementById('refreshAppointments').addEventListener('click', () => {
+    document.getElementById("refreshAppointments").addEventListener("click", () => {
       showAppointments();
       generateReports();
     });
 
-    document.getElementById('addAppointmentBtn').addEventListener('click', async () => {
-      const name = prompt('Nume client:');
+    document.getElementById("addAppointmentBtn").addEventListener("click", async () => {
+      const name = prompt("Nume client:");
       const dateInput = prompt('Dată și oră (ex: "joi 15:30"):');
-      const service = prompt('Serviciu:');
+      const service = prompt("Serviciu (pensat / masaj sculptural / îngrijire facială):");
 
-      if(name && dateInput && service) {
+      if (name && dateInput && service) {
         try {
-          if(!validateName(name)) throw new Error('Nume invalid');
+          if (!validateName(name)) throw new Error("Nume invalid");
           const date = parseDate(dateInput);
           validateDateTime(date);
-          if(await checkAvailability(date)) {
+          if (await checkAvailability(date)) {
             await saveAppointment(name, date, service);
             showAppointments();
             generateReports();
           } else {
-            alert('Interval ocupat!');
+            alert("Interval ocupat!");
           }
         } catch (error) {
           alert(error.message);
