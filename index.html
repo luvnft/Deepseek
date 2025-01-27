@@ -1,313 +1,504 @@
 <!DOCTYPE html>
 <html lang="ro">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Stelmina - Salon de Înfrumusețare</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Stelmina - Salon de Înfrumusețare</title>
 
-    <style>
-        :root {
-            --neon-blue: #64ffff;
-            --space-black: #0a0a1a;
-            --cyber-purple: #1a1a3a;
-        }
-        body {
-            margin: 0; min-height: 100vh;
-            background: linear-gradient(45deg, var(--space-black), var(--cyber-purple));
-            font-family: 'Segoe UI', sans-serif;
-            overflow: hidden;
-            touch-action: none;
-        }
-        #background-canvas {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
-        }
-        .chat-container {
-            position: fixed; top: 20px; bottom: 20px; left: 20px; right: 20px;
-            background: rgba(16,16,32,0.9);
-            backdrop-filter: blur(15px);
-            border-radius: 20px;
-            border: 1px solid rgba(100,255,255,0.2);
-            box-shadow: 0 0 40px rgba(100,255,255,0.1);
-            display: flex; flex-direction: column; z-index: 1;
-        }
-        .chat-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid rgba(100,255,255,0.1);
-            background: linear-gradient(90deg, rgba(16,16,32,0.9) 0%, rgba(32,32,64,0.9) 100%);
-            display: flex; align-items: center;
-        }
-        #chatbox {
-            flex: 1; padding: 1.5rem; overflow-y: auto; -webkit-overflow-scrolling: touch;
-        }
-        .message {
-            max-width: 85%; margin: 12px 0; padding: 1rem; border-radius: 15px;
-            animation: messagePop 0.3s ease-out;
-            position: relative; backdrop-filter: blur(5px);
-        }
-        .message.bot {
-            background: linear-gradient(45deg, rgba(32,32,64,0.3), rgba(16,16,32,0.2));
-            border: 1px solid rgba(100,255,255,0.15);
-            color: #e0e0ff;
-        }
-        .message.user {
-            background: linear-gradient(45deg, rgba(100,150,255,0.15), rgba(100,200,255,0.1));
-            border: 1px solid rgba(100,255,255,0.2);
-            margin-left: auto;
-            color: #c8ffff;
-        }
-        @keyframes messagePop {
-            0% { opacity: 0; transform: translateY(20px); }
-            100% { opacity: 1; transform: translateY(0); }
-        }
-        .input-area {
-            padding: 1.5rem;
-            border-top: 1px solid rgba(100,255,255,0.1);
-            display: flex; gap: 12px;
-        }
-        #userInput {
-            flex: 1;
-            background: rgba(8,8,16,0.6);
-            border: 1px solid rgba(100,255,255,0.2);
-            color: var(--neon-blue);
-            padding: 1rem;
-            border-radius: 12px;
-            font-size: 16px;
-        }
-        #sendButton {
-            background: linear-gradient(135deg, var(--neon-blue) 0%, #3264ff 100%);
-            border: none; padding: 12px 24px; border-radius: 12px;
-            color: white; cursor: pointer; transition: all 0.3s ease;
-            position: relative;
-        }
-        #sendButton:hover:not(:disabled) {
-            transform: scale(1.05);
-            box-shadow: 0 0 20px rgba(100,255,255,0.3);
-        }
-        #sendButton:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-        }
-        .loader {
-            width: 18px;
-            height: 18px;
-            border: 2px solid #FFF;
-            border-bottom-color: transparent;
-            border-radius: 50%;
-            animation: rotation 1s linear infinite;
-        }
-        @keyframes rotation {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .error-message {
-            color: #ff6464;
-            font-size: 0.9em;
-            margin-top: 8px;
-        }
-    </style>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <!-- Tailwind CSS (folosit din CDN, deși nu este recomandat în producție) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    :root {
+      --neon-blue: #64ffff;
+      --space-black: #0a0a1a;
+      --cyber-purple: #1a1a3a;
+    }
+
+    body {
+      margin: 0; 
+      min-height: 100vh;
+      background: linear-gradient(45deg, var(--space-black), var(--cyber-purple));
+      font-family: 'Segoe UI', sans-serif;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    #background-canvas {
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      z-index: 0;
+    }
+
+    .chat-container {
+      position: fixed; 
+      top: 20px; 
+      bottom: 20px; 
+      left: 20px; 
+      right: 20px;
+      background: rgba(16,16,32,0.9);
+      backdrop-filter: blur(15px);
+      border-radius: 20px;
+      border: 1px solid rgba(100,255,255,0.2);
+      box-shadow: 0 0 40px rgba(100,255,255,0.1);
+      display: flex; 
+      flex-direction: column; 
+      z-index: 1;
+    }
+
+    .chat-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid rgba(100,255,255,0.1);
+      background: linear-gradient(90deg, rgba(16,16,32,0.9) 0%, rgba(32,32,64,0.9) 100%);
+      display: flex; 
+      align-items: center;
+    }
+
+    #chatbox {
+      flex: 1; 
+      padding: 1.5rem; 
+      overflow-y: auto; 
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .message {
+      max-width: 85%; 
+      margin: 12px 0; 
+      padding: 1rem; 
+      border-radius: 15px;
+      animation: messagePop 0.3s ease-out;
+      position: relative; 
+      backdrop-filter: blur(5px);
+    }
+
+    .message.bot {
+      background: linear-gradient(45deg, rgba(32,32,64,0.3), rgba(16,16,32,0.2));
+      border: 1px solid rgba(100,255,255,0.15);
+      color: #e0e0ff;
+    }
+
+    .message.user {
+      background: linear-gradient(45deg, rgba(100,150,255,0.15), rgba(100,200,255,0.1));
+      border: 1px solid rgba(100,255,255,0.2);
+      margin-left: auto;
+      color: #c8ffff;
+    }
+
+    @keyframes messagePop {
+      0% { 
+        opacity: 0; 
+        transform: translateY(20px); 
+      }
+      100% { 
+        opacity: 1; 
+        transform: translateY(0); 
+      }
+    }
+
+    .input-area {
+      padding: 1.5rem;
+      border-top: 1px solid rgba(100,255,255,0.1);
+      display: flex; 
+      gap: 12px;
+    }
+
+    #userInput {
+      flex: 1;
+      background: rgba(8,8,16,0.6);
+      border: 1px solid rgba(100,255,255,0.2);
+      color: var(--neon-blue);
+      padding: 1rem;
+      border-radius: 12px;
+      font-size: 16px;
+    }
+
+    #sendButton {
+      background: linear-gradient(135deg, var(--neon-blue) 0%, #3264ff 100%);
+      border: none; 
+      padding: 12px 24px; 
+      border-radius: 12px;
+      color: white; 
+      cursor: pointer; 
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    #sendButton:hover:not(:disabled) {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(100,255,255,0.3);
+    }
+
+    #sendButton:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .loader {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #FFF;
+      border-bottom-color: transparent;
+      border-radius: 50%;
+      animation: rotation 1s linear infinite;
+    }
+
+    @keyframes rotation {
+      0%   { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .error-message {
+      color: #ff6464;
+      font-size: 0.9em;
+      margin-top: 8px;
+    }
+
+    /* Panou Admin ascuns implicit */
+    #adminView {
+      display: none;
+      padding: 1rem;
+      border-top: 1px solid rgba(100,255,255,0.1);
+    }
+
+    /* Opțional, stil pentru listă de programări */
+    #appointmentsList {
+      margin-top: 1rem;
+      padding: 0.5rem;
+      border: 1px solid rgba(100,255,255,0.2);
+      border-radius: 6px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    #appointmentsList div {
+      padding: 0.25rem 0;
+      border-bottom: 1px solid rgba(100,255,255,0.1);
+    }
+  </style>
 </head>
 <body>
-    <canvas id="background-canvas"></canvas>
+  <canvas id="background-canvas"></canvas>
 
-    <div class="chat-container">
-        <div class="chat-header">
-            <h1 class="text-2xl font-bold text-[#64ffff]">
-                <i class="fas fa-robot mr-2"></i>
-                Stelmina
-            </h1>
-            <button id="toggleViewBtn" class="ml-auto bg-[#3264ff] text-white px-4 py-2 rounded-lg">
-                <i class="fas fa-user-cog mr-2"></i> Admin
-            </button>
-        </div>
-
-        <div id="chatbox">
-            <div class="message bot">
-                Bună! ✨ Sunt asistentul virtual al salonului Stelmina. 
-                Cum vă pot ajuta astăzi? Vă rugăm să specificați:
-                - Numele dumneavoastră complet
-                - Data și ora dorită
-                - Serviciul solicitat (pensat, masaj sculptural bucal sau îngrijire facială)
-            </div>
-        </div>
-
-        <div id="adminView">
-            <h2>Gestionare Programări</h2>
-            <button id="addAppointmentBtn" class="bg-[#3264ff] text-white px-4 py-2 rounded-lg">
-                <i class="fas fa-plus mr-2"></i> Adaugă Programare
-            </button>
-            <div id="appointmentsList"></div>
-            <textarea id="instructionsInput" placeholder="Scrie instrucțiuni pentru chatbot..."></textarea>
-            <button id="sendInstructionsBtn" class="bg-[#3264ff] text-white px-4 py-2 rounded-lg mt-2">
-                <i class="fas fa-paper-plane mr-2"></i> Trimite Instrucțiuni
-            </button>
-        </div>
-
-        <div class="input-area">
-            <input type="text" id="userInput" placeholder="Scrie mesajul tău..." maxlength="200">
-            <button id="sendButton">
-                <i class="fas fa-paper-plane"></i>
-            </button>
-        </div>
+  <div class="chat-container">
+    <!-- HEADER -->
+    <div class="chat-header">
+      <h1 class="text-2xl font-bold text-[#64ffff]">
+        <i class="fas fa-robot mr-2"></i>
+        Stelmina
+      </h1>
+      <!-- Butonul care afișează/ascunde AdminView -->
+      <button id="toggleViewBtn" class="ml-auto bg-[#3264ff] text-white px-4 py-2 rounded-lg">
+        <i class="fas fa-user-cog mr-2"></i> Admin
+      </button>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
+    <!-- CHAT BOX -->
+    <div id="chatbox">
+      <div class="message bot">
+        Bună! ✨ Sunt asistentul virtual al salonului Stelmina. 
+        Cum vă pot ajuta astăzi? Vă rugăm să specificați:<br>
+        - Numele dumneavoastră complet<br>
+        - Data și ora dorită<br>
+        - Serviciul solicitat (pensat, masaj sculptural bucal sau îngrijire facială)
+      </div>
+    </div>
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyBwCFGYsXp5zjWIHAcQbOmdd31e7bDN8mk",
-            authDomain: "stelmina-19617.firebaseapp.com",
-            projectId: "stelmina-19617",
-            storageBucket: "stelmina-19617.appspot.com",
-            messagingSenderId: "828872692313",
-            appId: "1:828872692313:web:adc44bf28b54b26279d748",
-            measurementId: "G-FQ44LY0Y32"
-        };
+    <!-- Vedere Admin -->
+    <div id="adminView">
+      <h2 class="text-xl font-semibold text-[#64ffff] mb-2">Gestionare Programări</h2>
+      <button id="addAppointmentBtn" class="bg-[#3264ff] text-white px-4 py-2 rounded-lg">
+        <i class="fas fa-plus mr-2"></i> Adaugă Programare
+      </button>
+      <div id="appointmentsList"></div>
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+      <textarea 
+        id="instructionsInput" 
+        placeholder="Scrie instrucțiuni pentru chatbot..." 
+        class="w-full mt-3 p-2 rounded bg-gray-800 text-white"
+        rows="4"
+      ></textarea>
+      <button 
+        id="sendInstructionsBtn" 
+        class="bg-[#3264ff] text-white px-4 py-2 rounded-lg mt-2"
+      >
+        <i class="fas fa-paper-plane mr-2"></i> Trimite Instrucțiuni
+      </button>
+    </div>
 
-        const chatbox = document.getElementById('chatbox');
-        const userInput = document.getElementById('userInput');
-        const sendButton = document.getElementById('sendButton');
-        let isSending = false;
+    <!-- ZONA DE INPUT -->
+    <div class="input-area">
+      <input 
+        type="text" 
+        id="userInput" 
+        placeholder="Scrie mesajul tău..." 
+        maxlength="200"
+      >
+      <button id="sendButton">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </div>
+  </div>
 
-        function parseDate(input) {
-            const now = new Date();
-            const currentYear = now.getFullYear();
-            const currentMonth = now.getMonth() + 1;
-            
-            // Format: "28 februarie"
-            const dateMatch = input.match(/(\d{1,2})\s+([a-zA-Z]+)/i);
-            if (!dateMatch) return null;
+  <script type="module">
+    /* 
+      Importuri Firebase 
+      (asigură-te că ești conectat la internet pentru a funcționa)
+    */
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
+    import { 
+      getFirestore, 
+      collection, 
+      addDoc, 
+      getDocs 
+    } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
 
-            const day = parseInt(dateMatch[1]);
-            const monthName = dateMatch[2].toLowerCase();
-            const months = [
-                'ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie',
-                'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'
-            ];
-            const month = months.indexOf(monthName) + 1;
+    // Configurație Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyBwCFGYsXp5zjWIHAcQbOmdd31e7bDN8mk",
+      authDomain: "stelmina-19617.firebaseapp.com",
+      projectId: "stelmina-19617",
+      storageBucket: "stelmina-19617.appspot.com",
+      messagingSenderId: "828872692313",
+      appId: "1:828872692313:web:adc44bf28b54b26279d748",
+      measurementId: "G-FQ44LY0Y32"
+    };
+    
+    // Inițializare Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-            if (month < 1 || month > 12) return null;
+    // Elemente DOM
+    const chatbox           = document.getElementById('chatbox');
+    const userInput         = document.getElementById('userInput');
+    const sendButton        = document.getElementById('sendButton');
+    const toggleViewBtn     = document.getElementById('toggleViewBtn');
+    const adminView         = document.getElementById('adminView');
+    const addAppointmentBtn = document.getElementById('addAppointmentBtn');
+    const instructionsInput = document.getElementById('instructionsInput');
+    const sendInstructionsBtn = document.getElementById('sendInstructionsBtn');
 
-            // Dacă luna este în trecut față de luna curentă, folosim anul următor
-            const year = (month < currentMonth) ? currentYear + 1 : currentYear;
+    // Blocare trimitere multiplă
+    let isSending = false;
 
-            return new Date(year, month - 1, day);
+    // -------------------------------------------------------------
+    // Funcție pentru afișarea mesajului (bot/user) în chat
+    // -------------------------------------------------------------
+    function addMessage(text, isUser) {
+      const messageDiv = document.createElement('div');
+      messageDiv.classList.add('message', isUser ? 'user' : 'bot');
+      messageDiv.innerHTML = text;
+      chatbox.appendChild(messageDiv);
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    // -------------------------------------------------------------
+    // Parsează data (gen "28 februarie") și convertește într-un obiect Date
+    // -------------------------------------------------------------
+    function parseDate(input) {
+      const now = new Date();
+      const currentYear  = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+
+      // Format așteptat: "28 februarie"
+      const dateMatch = input.match(/(\d{1,2})\s+([a-zA-Z]+)/i);
+      if (!dateMatch) return null;
+
+      const day       = parseInt(dateMatch[1]);
+      const monthName = dateMatch[2].toLowerCase();
+      const months    = [
+        'ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie',
+        'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'
+      ];
+      const month = months.indexOf(monthName) + 1;
+
+      if (month < 1 || month > 12) return null;
+
+      // Dacă luna este în trecut față de luna curentă, folosim anul următor
+      const year = (month < currentMonth) ? currentYear + 1 : currentYear;
+
+      return new Date(year, month - 1, day);
+    }
+
+    // -------------------------------------------------------------
+    // Extrage nume, serviciu și data dintr-un text
+    // -------------------------------------------------------------
+    function extractAppointmentDetails(text) {
+      // Aici, simplu, caută patern de text
+      // Poți îmbunătăți regex-urile după cum îți trebuie
+      const nameMatch    = text.match(/[a-zA-ZăâîșțĂÂÎȘȚ ]+/);
+      const serviceMatch = text.match(/pensat|masaj sculptural bucal|îngrijire facială/i);
+      const dateMatch    = parseDate(text);
+
+      if (!nameMatch || !serviceMatch || !dateMatch) return null;
+
+      return {
+        name:    nameMatch[0].trim(),
+        service: serviceMatch[0].toLowerCase(),
+        date:    dateMatch.toISOString()
+      };
+    }
+
+    // -------------------------------------------------------------
+    // Salvează o programare în Firestore
+    // -------------------------------------------------------------
+    async function saveAppointment(clientName, date, service) {
+      try {
+        await addDoc(collection(db, "appointments"), {
+          clientName: clientName,
+          date:       date,
+          service:    service,
+          status:     'pending',
+          timestamp:  new Date().toISOString()
+        });
+        return true;
+      } catch (error) {
+        console.error('Eroare la salvarea programării:', error);
+        return false;
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Funcție addAppointment - folosită în butonul "Adaugă Programare" din AdminView
+    // -------------------------------------------------------------
+    async function addAppointment(clientName, date) {
+      // Aici putem alege un serviciu generic sau să cerem și serviciul
+      const service = prompt("Ce serviciu? (ex: pensat, masaj sculptural bucal, îngrijire facială)");
+      if (!service) return;
+
+      const saved = await saveAppointment(clientName, date, service);
+
+      if (saved) {
+        addMessage(`Programare salvată: ${clientName} - ${date} - ${service}`, false);
+        // Poți afișa și în secțiunea #appointmentsList
+        const appointmentsList = document.getElementById('appointmentsList');
+        const item = document.createElement('div');
+        item.textContent = `Nume: ${clientName}, Data: ${date}, Serviciu: ${service}`;
+        appointmentsList.appendChild(item);
+      } else {
+        addMessage('Eroare la salvarea programării.', false);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Trimite mesajul scris de utilizator
+    // -------------------------------------------------------------
+    async function sendMessage() {
+      if (isSending) return; // prevenție dublă trimitere
+
+      const rawPrompt = userInput.value.trim();
+      if (!rawPrompt) return;
+
+      isSending = true;
+      sendButton.innerHTML = '<div class="loader"></div>';
+      sendButton.disabled  = true;
+
+      try {
+        // Afișează mesaj user
+        addMessage(rawPrompt, true);
+        userInput.value = '';
+
+        // Verifică dacă utilizatorul a dat date pentru o programare
+        const details = extractAppointmentDetails(rawPrompt);
+        if (details) {
+          const saved = await saveAppointment(details.name, details.date, details.service);
+          if (saved) {
+            const formattedDate = new Date(details.date).toLocaleDateString('ro-RO', {
+              day:   'numeric',
+              month: 'long',
+              year:  'numeric'
+            });
+            addMessage(
+              `Programarea ta pentru ${details.service} la ${formattedDate} a fost înregistrată cu succes!`,
+              false
+            );
+            return; // Oprim, că deja am răspuns
+          }
         }
 
-        function extractAppointmentDetails(text) {
-            const nameMatch = text.match(/[a-zA-ZăâîșțĂÂÎȘȚ ]+/);
-            const serviceMatch = text.match(/pensat|masaj sculptural bucal|îngrijire facială|/i);
-            const dateMatch = parseDate(text);
-
-            if (!nameMatch || !serviceMatch || !dateMatch) return null;
-
-            return {
-                name: nameMatch[0].trim(),
-                service: serviceMatch[0].toLowerCase(),
-                date: dateMatch.toISOString()
-            };
-        }
-
-        async function saveAppointment(clientName, date, service) {
-            try {
-                await addDoc(collection(db, "appointments"), {
-                    clientName: clientName,
-                    date: date,
-                    service: service,
-                    status: 'pending',
-                    timestamp: new Date().toISOString()
-                });
-                return true;
-            } catch (error) {
-                console.error('Eroare la salvarea programării:', error);
-                return false;
-            }
-        }
-
-        async function sendMessage() {
-            if (isSending) return;
-            
-            const rawPrompt = userInput.value.trim();
-            if (!rawPrompt) return;
-
-            isSending = true;
-            sendButton.innerHTML = '<div class="loader"></div>';
-            sendButton.disabled = true;
-
-            try {
-                addMessage(rawPrompt, true);
-                userInput.value = '';
-
-                const details = extractAppointmentDetails(rawPrompt);
-                if (details) {
-                    const saved = await saveAppointment(details.name, details.date, details.service);
-                    if (saved) {
-                        const formattedDate = new Date(details.date).toLocaleDateString('ro-RO', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric'
-                        });
-                        addMessage(
-                            `Programarea ta pentru ${details.service} la ${formattedDate} a fost înregistrată cu succes!`,
-                            false
-                        );
-                        return;
-                    }
-                }
-
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: rawPrompt })
-                });
-
-                if (!response.ok) throw new Error(`Eroare server: ${response.status}`);
-
-                const data = await response.json();
-                addMessage(data.reply.replace(/<\/?[^>]+(>|$)/g, ""), false);
-            } catch (error) {
-                console.error('Eroare:', error);
-                addMessage('⚠️ Eroare de conexiune sau server. Încearcă din nou.', false);
-            } finally {
-                isSending = false;
-                sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
-                sendButton.disabled = false;
-            }
-        }
-
-
-       sendButton.addEventListener('click', sendMessage);
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
+        // Dacă nu e programare, se trimite la /api/chat (exemplu)
+        // Ai nevoie și de un endpoint /api/chat care să întoarcă { reply: "..."} 
+        // altfel va da eroare.
+        const response = await fetch('/api/chat', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ prompt: rawPrompt })
         });
 
-        addAppointmentBtn.addEventListener('click', async () => {
-            const clientName = prompt("Nume client:");
-            if (!clientName) return;
-            const date = prompt("Data și ora (ex: 2023-10-15 14:00):");
-            if (!date) return;
-            await addAppointment(clientName, date);
-        });
+        if (!response.ok) {
+          throw new Error(`Eroare server: ${response.status}`);
+        }
 
-        sendInstructionsBtn.addEventListener('click', () => {
-            const instructions = instructionsInput.value.trim();
-            if (!instructions) return;
-            addMessage(`Instrucțiuni primite: ${instructions}`, false);
-            instructionsInput.value = '';
-        });
+        const data = await response.json();
+        addMessage(data.reply.replace(/<\/?[^>]+(>|$)/g, ""), false);
 
-        // 8) Prevenție scroll pe mobil
-        let isTouchingChat = false;
-        chatbox.addEventListener('touchstart', () => isTouchingChat = true);
-        chatbox.addEventListener('touchend', () => isTouchingChat = false);
-        document.addEventListener('touchmove', (e) => {
-            if (!isTouchingChat) e.preventDefault();
-        }, { passive: false });
-    </script>
+      } catch (error) {
+        console.error('Eroare:', error);
+        addMessage('⚠️ Eroare de conexiune sau server. Încearcă din nou.', false);
+      } finally {
+        isSending = false;
+        sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
+        sendButton.disabled  = false;
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Evenimente butoane și input
+    // -------------------------------------------------------------
+    sendButton.addEventListener('click', sendMessage);
+
+    userInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Buton de adăugare manuală a unei programări din AdminView
+    addAppointmentBtn.addEventListener('click', async () => {
+      const clientName = prompt("Nume client:");
+      if (!clientName) return;
+
+      const date = prompt("Data și ora (ex: 2023-10-15 14:00):");
+      if (!date) return;
+
+      await addAppointment(clientName, date);
+    });
+
+    // Trimite instrucțiuni către chatbot (deocamdată doar apare în chat)
+    sendInstructionsBtn.addEventListener('click', () => {
+      const instructions = instructionsInput.value.trim();
+      if (!instructions) return;
+
+      addMessage(`Instrucțiuni primite: ${instructions}`, false);
+      instructionsInput.value = '';
+    });
+
+    // -------------------------------------------------------------
+    // Afișare/Ascundere AdminView
+    // -------------------------------------------------------------
+    function toggleAdminView() {
+      if (adminView.style.display === 'none') {
+        adminView.style.display = 'block';
+      } else {
+        adminView.style.display = 'none';
+      }
+    }
+    toggleViewBtn.addEventListener('click', toggleAdminView);
+
+    // -------------------------------------------------------------
+    // Prevenție scroll pe mobil (să nu scrolleze tot site-ul)
+    // -------------------------------------------------------------
+    let isTouchingChat = false;
+    chatbox.addEventListener('touchstart', () => isTouchingChat = true);
+    chatbox.addEventListener('touchend', () => isTouchingChat = false);
+    document.addEventListener('touchmove', (e) => {
+      if (!isTouchingChat) e.preventDefault();
+    }, { passive: false });
+  </script>
 </body>
 </html>
