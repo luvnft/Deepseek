@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no">
   <title>Stelmina - Salon de Înfrumusețare</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css' rel='stylesheet'>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js'></script>
 
   <style>
     :root {
@@ -114,7 +117,6 @@
       box-shadow: 0 0 20px rgba(100,255,255,0.3);
     }
 
-    /* Admin Styles */
     #adminView {
       display: none;
       padding: 1.5rem;
@@ -143,22 +145,41 @@
       background: rgba(32,32,64,0.3);
     }
 
-    .appointment-time {
-      color: #64ffff;
-      font-weight: 500;
+    #calendar {
+      background: rgba(16,16,32,0.9);
+      border-radius: 12px;
+      padding: 1rem;
+      margin: 1rem 0;
     }
 
-    .admin-header {
-      grid-template-columns: 1fr 2fr 1.5fr;
-      gap: 1rem;
-      padding: 0.75rem 1rem;
-      background: rgba(26,26,58,0.9);
-      font-weight: 600;
+    .fc-toolbar-title {
+      color: #64ffff !important;
     }
 
-    /* For consistent text color in appointment list */
-    .appointment-item, .appointment-name, .appointment-time, .appointment-service {
-      color: #64ffff;
+    @media (max-width: 640px) {
+      .chat-container {
+        top: 10px;
+        bottom: 10px;
+        left: 10px;
+        right: 10px;
+      }
+      
+      .message {
+        max-width: 95%;
+        font-size: 14px;
+        padding: 8px;
+      }
+      
+      #userInput {
+        padding: 8px;
+        font-size: 14px;
+      }
+
+      .appointment-item {
+        grid-template-columns: 1fr;
+        gap: 4px;
+        padding: 8px;
+      }
     }
   </style>
 </head>
@@ -174,17 +195,11 @@
       </button>
     </div>
 
-    <div id="chatbox">
-      <div class="message bot">
-        Bună! ✨ Sunt asistentul virtual al salonului Stelmina.<br><br>
-        Te rog să precizezi:<br>
-        1. Numele tău<br>
-        2. Data și ora dorită<br>
-        3. Serviciul solicitat
-      </div>
-    </div>
+    <div id="chatbox"></div>
 
     <div id="adminView">
+      <div id="calendar"></div>
+      
       <h2 class="text-xl font-semibold text-[#64ffff] mb-4">
         <i class="fas fa-calendar-alt mr-2"></i>Programări
       </h2>
@@ -198,28 +213,21 @@
         </button>
       </div>
 
-      <div class="admin-header grid grid-cols-3 gap-4 px-4 py-2">
-        <div class="font-semibold text-[#64ffff]">Client</div>
-        <div class="font-semibold text-[#64ffff]">Dată și Ora</div>
-        <div class="font-semibold text-[#64ffff]">Serviciu</div>
-      </div>
-
       <div id="appointmentsList" class="rounded-b-lg"></div>
 
       <div class="mt-6">
-        <h3 class="text-lg font-semibold text-[#64ffff] mb-3">
-          <i class="fas fa-cogs mr-2"></i>Configurare Chatbot
-        </h3>
-        <textarea id="instructionsInput" class="w-full p-3 rounded-lg bg-[#0a0a1a] border border-[#64ffff]/30 text-white focus:border-[#64ffff] focus:ring-2 focus:ring-[#64ffff]/50" 
-          placeholder="Scrie instrucțiuni personalizate pentru chatbot..." rows="4"></textarea>
-        <button id="sendInstructionsBtn" class="mt-3 bg-[#3264ff] hover:bg-[#64ffff] text-white px-6 py-2 rounded-lg transition-all">
-          <i class="fas fa-upload mr-2"></i>Salvează Configurație
-        </button>
+        <h3 class="text-lg font-semibold text-[#64ffff] mb-3">Statistici</h3>
+        <canvas id="reportsChart" class="bg-[#0a0a1a] p-4 rounded-lg"></canvas>
       </div>
     </div>
 
     <div class="input-area">
-      <input type="text" id="userInput" placeholder="Scrie mesajul tău..." maxlength="200">
+      <input type="text" id="userInput" placeholder="Scrie mesajul tău..." maxlength="200" list="services">
+      <datalist id="services">
+        <option value="Pensat">
+        <option value="Masaj sculptural bucal">
+        <option value="Îngrijire facială premium">
+      </datalist>
       <button id="sendButton">
         <i class="fas fa-paper-plane"></i>
       </button>
@@ -231,14 +239,16 @@
     import { 
       getFirestore, 
       collection, 
-      addDoc, 
+      addDoc,
       getDocs,
       query,
       orderBy,
-      where
+      where,
+      deleteDoc,
+      doc,
+      updateDoc
     } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
 
-    // Configurația Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyBwCFGYsXp5zjWIHAcQbOmdd31e7bDN8mk",
       authDomain: "stelmina-19617.firebaseapp.com",
@@ -251,88 +261,197 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    let chartInstance = null;
 
-    // Elemente DOM
     const chatbox = document.getElementById('chatbox');
     const userInput = document.getElementById('userInput');
     const sendButton = document.getElementById('sendButton');
     let userName = localStorage.getItem('chatbotUserName') || null;
 
-    // Inițializare chat
-    window.addEventListener('DOMContentLoaded', () => {
-      if (userName) {
-        addMessage(`Bună revenire, ${userName}! Cu ce vă pot ajuta astăzi? ✨`, false);
+    // Inițializare chat cu istoric
+    const loadChatHistory = () => {
+      const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
+      history.forEach(msg => addMessage(msg.text, msg.isUser, false));
+      if(history.length === 0) {
+        addMessage(`Bună! ✨ Sunt asistentul virtual al salonului Stelmina.<br><br>
+          Te rog să precizezi:<br>
+          1. Numele tău<br>
+          2. Data și ora dorită<br>
+          3. Serviciul solicitat`, false, false);
       }
-    });
+    }
 
-    // Funcție de adăugare mesaje în chat
-    function addMessage(text, isUser) {
+    window.addEventListener('DOMContentLoaded', loadChatHistory);
+
+    // Funcții mesaje
+    function addMessage(text, isUser, save = true) {
       const messageDiv = document.createElement('div');
       messageDiv.classList.add('message', isUser ? 'user' : 'bot');
       messageDiv.innerHTML = text;
       chatbox.appendChild(messageDiv);
       chatbox.scrollTop = chatbox.scrollHeight;
+
+      if(save) {
+        const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
+        history.push({ text, isUser });
+        localStorage.setItem('chatHistory', JSON.stringify(history));
+      }
     }
 
-    // Extrage numele utilizatorului din text
-    function extractUserName(text) {
-      const patterns = [
-        /(?:sunt|numele\s*(meu)?\s*este?|mă\s*cheamă)\s+([A-Za-zȘșȚțÂâÎîĂă]+)/i,
-        /\b([A-ZȘȚÂĂÎ][a-zșțâîă]+)\b/
-      ];
+    // Validări
+    const validateName = (name) => {
+      return /^[A-Za-zȘșȚțÂâÎîĂă\s]{2,30}$/.test(name);
+    }
+
+    const validateDateTime = (date) => {
+      const now = new Date();
+      const minDate = new Date(now.getTime() + 30 * 60000);
+      const maxDate = new Date(now.setMonth(now.getMonth() + 3));
       
-      for (const pattern of patterns) {
-        const match = text.match(pattern);
-        if (match) {
-          const name = (match[2] || match[1]).trim();
-          localStorage.setItem('chatbotUserName', name);
-          userName = name;
-          return name;
+      if(date < minDate) throw new Error('Data trebuie să fie cu minim 30 de minute în viitor');
+      if(date > maxDate) throw new Error('Putem programa maxim 3 luni în avans');
+      
+      const hours = date.getHours();
+      if(hours < 9 || hours >= 20) throw new Error('Programăm doar între 9:00 și 20:00');
+      
+      return true;
+    }
+
+    // Calendar
+    const initCalendar = async () => {
+      const calendarEl = document.getElementById('calendar');
+      const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek',
+        events: await fetchAppointmentsAsEvents(),
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        eventColor: '#64ffff',
+        eventTextColor: '#0a0a1a'
+      });
+      calendar.render();
+    }
+
+    const fetchAppointmentsAsEvents = async () => {
+      const q = query(collection(db, "appointments"));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({
+        title: `${doc.data().service} - ${doc.data().clientName}`,
+        start: doc.data().date,
+        extendedProps: {
+          client: doc.data().clientName
         }
-      }
-      return userName;
+      }));
     }
 
-    // Funcție pentru a apela API-ul AI (ex: /api/chat)
-    async function getAIChatResponse(prompt) {
-      try {
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: prompt })
+    // Rapoarte
+    const generateReports = async () => {
+      const snapshot = await getDocs(collection(db, "appointments"));
+      const servicesCount = {};
+      
+      snapshot.forEach(doc => {
+        const service = doc.data().service;
+        servicesCount[service] = (servicesCount[service] || 0) + 1;
+      });
+
+      if(chartInstance) chartInstance.destroy();
+      
+      const ctx = document.getElementById('reportsChart').getContext('2d');
+      chartInstance = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: Object.keys(servicesCount),
+          datasets: [{
+            data: Object.values(servicesCount),
+            backgroundColor: ['#64ffff', '#3264ff', '#1a1a3a'],
+            borderColor: '#0a0a1a'
+          }]
+        }
+      });
+    }
+
+    // Gestiune programări
+    const showAppointments = async () => {
+      const appointmentsList = document.getElementById('appointmentsList');
+      appointmentsList.innerHTML = '';
+
+      const q = query(collection(db, "appointments"), orderBy("timestamp", "desc"));
+      const querySnapshot = await getDocs(q);
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const item = document.createElement('div');
+        item.className = 'appointment-item grid grid-cols-3 gap-4';
+
+        const date = new Date(data.date).toLocaleString('ro-RO', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          hour: '2-digit',
+          minute: '2-digit'
         });
-        const data = await response.json();
-        return data.reply;
-      } catch (error) {
-        console.error('Eroare API:', error);
-        return '⏳ Momentan avem dificultăți tehnice. Vă rugăm să încercați mai târziu.';
-      }
+
+        item.innerHTML = `
+          <div class="appointment-name">${data.clientName}</div>
+          <div class="appointment-time">${date}</div>
+          <div class="appointment-service">${data.service}</div>
+          <div class="col-span-3 flex gap-2 justify-end">
+            <button class="edit-btn px-2 py-1 bg-blue-600 rounded" data-id="${doc.id}">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="delete-btn px-2 py-1 bg-red-600 rounded" data-id="${doc.id}">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        `;
+
+        item.querySelector('.delete-btn').addEventListener('click', async (e) => {
+          await deleteDoc(doc(db, "appointments", e.target.closest('button').dataset.id));
+          showAppointments();
+          generateReports();
+        });
+
+        item.querySelector('.edit-btn').addEventListener('click', async (e) => {
+          const newDate = prompt('Noua dată (ex: "joi 15:30"):', date);
+          if(newDate) {
+            const parsedDate = parseDate(newDate);
+            try {
+              validateDateTime(parsedDate);
+              await updateDoc(doc(db, "appointments", e.target.closest('button').dataset.id), {
+                date: parsedDate.toISOString()
+              });
+              showAppointments();
+              generateReports();
+            } catch (error) {
+              alert(error.message);
+            }
+          }
+        });
+
+        appointmentsList.appendChild(item);
+      });
     }
 
-    // Funcție de parsare a datei (fără offset de fus orar)
+    // Parsare dată
     function parseDate(input) {
       const now = new Date();
       const weekdays = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă'];
-
-      // Începem de la data curentă
       let finalDate = new Date(now);
 
-      // Parsare zile săptămânii
       const weekdayMatch = input.match(new RegExp(`\\b(${weekdays.join('|')})\\b`, 'i'));
       if (weekdayMatch) {
         const targetDay = weekdays.findIndex(d => d === weekdayMatch[1].toLowerCase());
         const currentDay = now.getDay();
         let dayOffset = targetDay - currentDay;
-        if (dayOffset < 0) {
-          dayOffset += 7;
-        }
+        if (dayOffset < 0) dayOffset += 7;
         finalDate.setDate(now.getDate() + dayOffset);
       }
       else if (input.toLowerCase().includes('mâine')) {
         finalDate.setDate(now.getDate() + 1);
       }
 
-      // Parsare oră
       const timeMatch = input.match(/(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?/i);
       if (timeMatch) {
         let hours = parseInt(timeMatch[1]);
@@ -348,7 +467,66 @@
       return finalDate;
     }
 
-    // Verifică disponibilitatea în Firestore
+    // Autentificare admin
+    document.getElementById('toggleViewBtn').addEventListener('click', () => {
+      const password = prompt('Introdu parola admin:');
+      if(password === '1234') {
+        const adminView = document.getElementById('adminView');
+        adminView.style.display = adminView.style.display === 'none' ? 'block' : 'none';
+        if(adminView.style.display === 'block') {
+          showAppointments();
+          initCalendar();
+          generateReports();
+        }
+      } else {
+        alert('Parolă incorectă!');
+      }
+    });
+
+    // Gestionare mesaje
+    async function handleUserMessage(text) {
+      try {
+        const name = extractUserName(text);
+        if(name) {
+          if(!validateName(name)) {
+            return "⚠️ Nume invalid. Te rog folosește doar litere și spații (2-30 caractere).";
+          }
+          localStorage.setItem('chatbotUserName', name);
+        }
+
+        const serviceMatch = text.match(/pensat|masaj sculptural bucal|îngrijire facială premium/i);
+        const date = parseDate(text);
+
+        if (name && serviceMatch && date) {
+          validateDateTime(date);
+          const isAvailable = await checkAvailability(date);
+          if (!isAvailable) {
+            return "⏰ Ne pare rău, intervalul este deja ocupat. Vă rugăm alegeți altă oră.";
+          }
+          
+          const saved = await saveAppointment(name, date, serviceMatch[0]);
+          if (saved) {
+            const formattedDate = date.toLocaleString('ro-RO', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            return `✅ Programare confirmată!<br><br>
+              👤 ${name}<br>
+              📅 ${formattedDate}<br>
+              💼 ${serviceMatch[0]}`;
+          }
+        }
+        
+        return await getAIChatResponse(text);
+
+      } catch (error) {
+        return `⚠️ Eroare: ${error.message}`;
+      }
+    }
+
     async function checkAvailability(date) {
       const colRef = collection(db, "appointments");
       const q = query(colRef, where("date", "==", date.toISOString()));
@@ -356,7 +534,6 @@
       return snapshot.empty;
     }
 
-    // Salvează programarea în Firestore
     async function saveAppointment(name, date, service) {
       try {
         await addDoc(collection(db, "appointments"), {
@@ -373,84 +550,37 @@
       }
     }
 
-    // Afișare programări în admin view
-    async function showAppointments() {
-      const appointmentsList = document.getElementById('appointmentsList');
-      appointmentsList.innerHTML = '';
-
-      const q = query(collection(db, "appointments"), orderBy("timestamp", "desc"));
-      const querySnapshot = await getDocs(q);
-
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        const item = document.createElement('div');
-        item.className = 'appointment-item';
-
-        const date = new Date(data.date).toLocaleString('ro-RO', {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
-
-        item.innerHTML = `
-          <div class="appointment-name">
-            <i class="fas fa-user text-[#64ffff]"></i>
-            ${data.clientName}
-          </div>
-          <div class="appointment-time">${date}</div>
-          <div class="appointment-service">
-            <i class="fas fa-spa text-[#64ffff]"></i>
-            ${data.service}
-          </div>
-        `;
-        appointmentsList.appendChild(item);
-      });
-    }
-
-    // Gestionarea logicii conversației
-    async function handleUserMessage(text) {
-      try {
-        // Extrage numele
-        const name = extractUserName(text);
-        // Identifică serviciul
-        const serviceMatch = text.match(/pensat|masaj sculptural bucal|îngrijire facială/i);
-        // Parsează data
-        const date = parseDate(text);
-
-        // Dacă pare a fi o cerere de programare
-        if (name && serviceMatch && date) {
-          const isAvailable = await checkAvailability(date);
-          if (!isAvailable) {
-            return "⏰ Ne pare rău, intervalul este deja ocupat. Vă rugăm alegeți altă oră.";
-          }
-          const saved = await saveAppointment(name, date, serviceMatch[0]);
-          if (saved) {
-            const formattedDate = date.toLocaleString('ro-RO', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              hour: '2-digit',
-              minute: '2-digit'
-            });
-            return `✅ Programare confirmată!<br><br>
-              👤 ${name}<br>
-              📅 ${formattedDate}<br>
-              💼 ${serviceMatch[0]}`;
-          } else {
-            return "⚠️ Eroare la salvarea programării. Vă rugăm încercați din nou.";
-          }
+    function extractUserName(text) {
+      const patterns = [
+        /(?:sunt|numele\s*(meu)?\s*este?|mă\s*cheamă)\s+([A-Za-zȘșȚțÂâÎîĂă]+)/i,
+        /\b([A-ZȘȚÂĂÎ][a-zșțâîă]+)\b/
+      ];
+      
+      for (const pattern of patterns) {
+        const match = text.match(pattern);
+        if (match) {
+          const name = (match[2] || match[1]).trim();
+          return name;
         }
-      } catch (error) {
-        console.error('Eroare programare:', error);
       }
-
-      // Dacă nu e programare, apelăm AI
-      return await getAIChatResponse(text);
+      return null;
     }
 
-    // Eveniment la trimiterea mesajului de către utilizator
+    async function getAIChatResponse(prompt) {
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: prompt })
+        });
+        const data = await response.json();
+        return data.reply;
+      } catch (error) {
+        return '⏳ Momentan avem dificultăți tehnice. Vă rugăm să încercați mai târziu.';
+      }
+    }
+
+    // Evenimente
     sendButton.addEventListener('click', async () => {
       const text = userInput.value.trim();
       if (!text) return;
@@ -462,51 +592,41 @@
         const response = await handleUserMessage(text);
         addMessage(response, false);
       } catch (error) {
-        console.error("Eroare:", error);
         addMessage("⚠️ A apărut o eroare. Vă rugăm încercați din nou.", false);
       }
     });
 
-    // Intrare "Enter" în câmpul de text
     userInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        sendButton.click();
-      }
+      if (e.key === 'Enter') sendButton.click();
     });
 
-    // Buton Admin: toggle + refresh
-    document.getElementById('toggleViewBtn').addEventListener('click', () => {
-      const adminView = document.getElementById('adminView');
-      adminView.style.display = adminView.style.display === 'none' ? 'block' : 'none';
-      if (adminView.style.display === 'block') {
-        showAppointments();
-      }
+    document.getElementById('refreshAppointments').addEventListener('click', () => {
+      showAppointments();
+      generateReports();
     });
 
-    document.getElementById('refreshAppointments').addEventListener('click', showAppointments);
-
-    // Adăugare programare din admin
     document.getElementById('addAppointmentBtn').addEventListener('click', async () => {
       const name = prompt('Nume client:');
-      const dateInput = prompt('Dată și oră (ex: "joi 15:30" sau "2024-03-25 14:00")');
+      const dateInput = prompt('Dată și oră (ex: "joi 15:30"):');
       const service = prompt('Serviciu:');
 
-      if (name && dateInput && service) {
-        const date = parseDate(dateInput);
-        if (await checkAvailability(date)) {
-          await saveAppointment(name, date, service);
-          showAppointments();
-        } else {
-          alert('Interval orar indisponibil!');
+      if(name && dateInput && service) {
+        try {
+          if(!validateName(name)) throw new Error('Nume invalid');
+          const date = parseDate(dateInput);
+          validateDateTime(date);
+          
+          if(await checkAvailability(date)) {
+            await saveAppointment(name, date, service);
+            showAppointments();
+            generateReports();
+          } else {
+            alert('Interval ocupat!');
+          }
+        } catch (error) {
+          alert(error.message);
         }
       }
-    });
-
-    // Buton de salvare a configurației chatbot (exemplu simplu)
-    document.getElementById('sendInstructionsBtn').addEventListener('click', () => {
-      const instructions = document.getElementById('instructionsInput').value;
-      console.log("Instrucțiuni chatbot:", instructions);
-      alert("Instrucțiunile au fost salvate (exemplu).");
     });
   </script>
 </body>
