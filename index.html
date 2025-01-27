@@ -249,6 +249,7 @@
       updateDoc
     } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
 
+    // -- Firebase Config --
     const firebaseConfig = {
       apiKey: "AIzaSyBwCFGYsXp5zjWIHAcQbOmdd31e7bDN8mk",
       authDomain: "stelmina-19617.firebaseapp.com",
@@ -258,28 +259,37 @@
       appId: "1:828872692313:web:adc44bf28b54b26279d748",
       measurementId: "G-FQ44LY0Y32"
     };
-
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+
+    // -- Chart instance for re-rendering stats --
     let chartInstance = null;
 
-    const chatbox = document.getElementById('chatbox');
-    const userInput = document.getElementById('userInput');
-    const sendButton = document.getElementById('sendButton');
+    // -- DOM Elements --
+    const chatbox       = document.getElementById('chatbox');
+    const userInput     = document.getElementById('userInput');
+    const sendButton    = document.getElementById('sendButton');
+    const adminView     = document.getElementById('adminView');
+    const toggleViewBtn = document.getElementById('toggleViewBtn');
+
+    // -- We store the user name in local storage (if they've given it once) --
     let userName = localStorage.getItem('chatbotUserName') || null;
 
+    // ------------------------------------------------------
+    // 1. Chat + localStorage History
+    // ------------------------------------------------------
     const loadChatHistory = () => {
       const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
       history.forEach(msg => addMessage(msg.text, msg.isUser, false));
       if(history.length === 0) {
+        // Mesajul introductiv
         addMessage(`Bună! ✨ Sunt asistentul virtual al salonului Stelmina.<br><br>
           Te rog să precizezi:<br>
           1. Numele tău<br>
           2. Data și ora dorită<br>
           3. Serviciul solicitat`, false, false);
       }
-    }
-
+    };
     window.addEventListener('DOMContentLoaded', loadChatHistory);
 
     function addMessage(text, isUser, save = true) {
@@ -296,29 +306,283 @@
       }
     }
 
+    // ------------------------------------------------------
+    // 2. Validări (nume / data-ora)
+    // ------------------------------------------------------
     const validateName = (name) => {
+      // Nume cu litere românești și spații, 2-30 caractere
       return /^[A-Za-zȘșȚțÂâÎîĂă\s]{2,30}$/.test(name);
+    };
+
+    function extractUserName(text) {
+      // Încearcă întâi să extragă din formule tip "numele meu e..."
+      const patterns = [
+        /(?:sunt|numele\s*(meu)?\s*este?|mă\s*cheamă)\s+([A-Za-zȘșȚțÂâÎîĂă]+)/i,
+        /\b([A-ZȘȚÂĂÎ][a-zșțâîă]+)\b/
+      ];
+      for (const pattern of patterns) {
+        const match = text.match(pattern);
+        if (match) {
+          const extracted = (match[2] || match[1]).trim();
+          return extracted;
+        }
+      }
+      return null;
     }
 
     const validateDateTime = (date) => {
       const now = new Date();
-      const minDate = new Date(now.getTime() + 30 * 60000);
-      const maxDate = new Date(now.setMonth(now.getMonth() + 3));
+      const minDate = new Date(now.getTime() + 30 * 60000); // minim 30 min în viitor
+      const maxDate = new Date(now.setMonth(now.getMonth() + 3)); // max 3 luni în avans
       
-      if(date < minDate) throw new Error('Data trebuie să fie cu minim 30 de minute în viitor');
-      if(date > maxDate) throw new Error('Putem programa maxim 3 luni în avans');
+      if(date < minDate) {
+        throw new Error('Data trebuie să fie cu minim 30 de minute în viitor');
+      }
+      if(date > maxDate) {
+        throw new Error('Putem programa maxim 3 luni în avans');
+      }
       
       const hours = date.getHours();
-      if(hours < 9 || hours >= 20) throw new Error('Programăm doar între 9:00 și 20:00');
-      
+      if(hours < 9 || hours >= 20) {
+        throw new Error('Programăm doar între 9:00 și 20:00');
+      }
       return true;
+    };
+
+    // ------------------------------------------------------
+    // 3. Parsare data/oră în stil românesc
+    // ------------------------------------------------------
+    function parseDate(input) {
+      const now = new Date();
+      const finalDate = new Date(now); // plecăm de la "acum"
+
+      // Dicționar lună => index
+      const romanianMonths = {
+        'ianuarie': 0, 'februarie': 1, 'martie': 2, 'aprilie': 3,
+        'mai': 4, 'iunie': 5, 'iulie': 6, 'august': 7,
+        'septembrie': 8, 'octombrie': 9, 'noiembrie': 10, 'decembrie': 11
+      };
+
+      // Căutăm un pattern de tipul "12 martie ora 15"
+      const dateMatch = input.match(/(\d{1,2})\s+(ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie)\s*(ora)?\s*(\d{1,2})?/i);
+
+      if (dateMatch) {
+        const day = parseInt(dateMatch[1], 10);
+        const month = romanianMonths[dateMatch[2].toLowerCase()];
+        const year = now.getFullYear();
+        
+        finalDate.setFullYear(year, month, day);
+        // Dacă am oră
+        if (dateMatch[4]) {
+          const hours = parseInt(dateMatch[4], 10);
+          finalDate.setHours(hours, 0, 0, 0);
+        }
+      } else {
+        // Dacă nu avem format complet, căutăm zilele săptămânii
+        const weekdays = ['duminică','luni','marți','miercuri','joi','vineri','sâmbătă'];
+        const weekdayMatch = input.match(new RegExp(`\\b(${weekdays.join('|')})\\b`, 'i'));
+        if (weekdayMatch) {
+          // calculăm offset față de ziua curentă
+          const targetDay = weekdays.findIndex(d => d === weekdayMatch[1].toLowerCase());
+          const currentDay = now.getDay();
+          let dayOffset = targetDay - currentDay;
+          if (dayOffset < 0) dayOffset += 7;
+          finalDate.setDate(now.getDate() + dayOffset);
+        } else if (input.toLowerCase().includes('mâine')) {
+          finalDate.setDate(now.getDate() + 1);
+        }
+
+        // Acum căutăm un pattern orar "HH:mm"
+        const timeMatch = input.match(/(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?/i);
+        if (timeMatch) {
+          let hours = parseInt(timeMatch[1], 10);
+          const minutes = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+          const period = timeMatch[3]?.toLowerCase();
+
+          if (period === 'pm' && hours < 12) hours += 12;
+          if (period === 'am' && hours === 12) hours = 0;
+
+          finalDate.setHours(hours, minutes, 0, 0);
+        }
+      }
+
+      if (finalDate.toString() === 'Invalid Date') {
+        throw new Error('Dată invalidă');
+      }
+      return finalDate;
     }
 
-    const initCalendar = async () => {
+    // ------------------------------------------------------
+    // 4. Firestore: Salvează / Șterge / Update programări
+    // ------------------------------------------------------
+    async function checkAvailability(date) {
+      // Creăm un interval orar (ex. 15:00 - 15:59) pentru a verifica dacă e liber
+      const start = new Date(date);
+      start.setMinutes(0, 0, 0);
+      
+      const end = new Date(date);
+      end.setMinutes(59, 59, 999);
+
+      const colRef = collection(db, "appointments");
+      const qDate = query(
+        colRef, 
+        where("date", ">=", start.toISOString()),
+        where("date", "<=", end.toISOString())
+      );
+      
+      const snapshot = await getDocs(qDate);
+      return snapshot.empty; // true => liber, false => ocupat
+    }
+
+    async function saveAppointment(name, date, service) {
+      try {
+        await addDoc(collection(db, "appointments"), {
+          clientName: name,
+          date: date.toISOString(),
+          service: service.toLowerCase(),
+          timestamp: new Date().toISOString(),
+          status: "confirmed"
+        });
+        return true;
+      } catch (error) {
+        console.error("Eroare salvare:", error);
+        return false;
+      }
+    }
+
+    // ------------------------------------------------------
+    // 5. Chat logic + AI fallback
+    // ------------------------------------------------------
+    async function getAIChatResponse(prompt) {
+      // Aici ați putea avea un endpoint real de chat AI
+      // Momentan doar returnează un text generic
+      try {
+        // DEMO: un fetch ipotetic
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt })
+        });
+        const data = await response.json();
+        return data.reply;
+      } catch (error) {
+        return '⏳ Momentan avem dificultăți tehnice. Vă rugăm să încercați mai târziu.';
+      }
+    }
+
+    async function handleUserMessage(text) {
+      // 1. Verificăm dacă apare un serviciu din cele 3 cunoscute
+      const serviceMatch = text.match(/pensat|masaj sculptural bucal|îngrijire facială premium/i);
+
+      // 2. Dacă NU apare niciun serviciu, lăsăm AI-ul să răspundă liber
+      if(!serviceMatch) {
+        return await getAIChatResponse(text);
+      }
+
+      // 3. Avem un serviciu => încercăm să facem programarea
+      try {
+        // extragem numele (dacă încă nu-l aveam salvat)
+        let name = extractUserName(text) || userName;
+        if(!name) {
+          // Numele e obligatoriu pentru o programare
+          return "Te rog să îmi spui și numele tău pentru a finaliza programarea.";
+        }
+        if(!validateName(name)) {
+          return "⚠️ Nume invalid. Te rog folosește doar litere și spații (2-30 caractere).";
+        }
+        localStorage.setItem('chatbotUserName', name);
+
+        // parse date
+        const date = parseDate(text);
+        validateDateTime(date);
+
+        // verificăm disponibilitatea
+        const isAvailable = await checkAvailability(date);
+        if (!isAvailable) {
+          return "⏰ Ne pare rău, intervalul este deja ocupat. Vă rugăm alegeți altă oră.";
+        }
+
+        // salvăm programarea
+        const saved = await saveAppointment(name, date, serviceMatch[0]);
+        if (saved) {
+          const formattedDate = date.toLocaleString('ro-RO', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          return `✅ Programare confirmată!<br><br>
+            👤 ${name}<br>
+            📅 ${formattedDate}<br>
+            💼 ${serviceMatch[0]}`;
+        }
+
+        // fallback la AI
+        return await getAIChatResponse(text);
+      } catch (error) {
+        // Orice eroare de validare
+        return `⚠️ Eroare: ${error.message}`;
+      }
+    }
+
+    // ------------------------------------------------------
+    // 6. Evenimente butoane
+    // ------------------------------------------------------
+    sendButton.addEventListener('click', async () => {
+      const text = userInput.value.trim();
+      if (!text) return;
+
+      userInput.value = '';
+      addMessage(text, true);
+
+      try {
+        const response = await handleUserMessage(text);
+        addMessage(response, false);
+      } catch (error) {
+        addMessage("⚠️ A apărut o eroare. Vă rugăm încercați din nou.", false);
+      }
+    });
+
+    userInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendButton.click();
+    });
+
+    // ------------------------------------------------------
+    // 7. Admin View: Calendar / Programări / Statistici
+    // ------------------------------------------------------
+    toggleViewBtn.addEventListener('click', () => {
+      const password = prompt('Introdu parola admin:');
+      if(password === '1234') {
+        adminView.style.display = (adminView.style.display === 'none') ? 'block' : 'none';
+        if(adminView.style.display === 'block') {
+          showAppointments();
+          initCalendar();
+          generateReports();
+        }
+      } else {
+        alert('Parolă incorectă!');
+      }
+    });
+
+    async function fetchAppointmentsAsEvents() {
+      const qAll = query(collection(db, "appointments"));
+      const snapshot = await getDocs(qAll);
+      return snapshot.docs.map(docA => ({
+        title: `${docA.data().service} - ${docA.data().clientName}`,
+        start: docA.data().date,
+        extendedProps: {
+          client: docA.data().clientName
+        }
+      }));
+    }
+
+    async function initCalendar() {
       const calendarEl = document.getElementById('calendar');
+      const eventsData = await fetchAppointmentsAsEvents();
       const calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'timeGridWeek',
-        events: await fetchAppointmentsAsEvents(),
+        events: eventsData,
         headerToolbar: {
           left: 'prev,next today',
           center: 'title',
@@ -330,28 +594,18 @@
       calendar.render();
     }
 
-    const fetchAppointmentsAsEvents = async () => {
-      const q = query(collection(db, "appointments"));
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({
-        title: `${doc.data().service} - ${doc.data().clientName}`,
-        start: doc.data().date,
-        extendedProps: {
-          client: doc.data().clientName
-        }
-      }));
-    }
-
-    const generateReports = async () => {
+    async function generateReports() {
       const snapshot = await getDocs(collection(db, "appointments"));
       const servicesCount = {};
       
-      snapshot.forEach(doc => {
-        const service = doc.data().service;
+      snapshot.forEach(docA => {
+        const service = docA.data().service;
         servicesCount[service] = (servicesCount[service] || 0) + 1;
       });
 
-      if(chartInstance) chartInstance.destroy();
+      if(chartInstance) {
+        chartInstance.destroy();
+      }
       
       const ctx = document.getElementById('reportsChart').getContext('2d');
       chartInstance = new Chart(ctx, {
@@ -367,15 +621,15 @@
       });
     }
 
-    const showAppointments = async () => {
+    async function showAppointments() {
       const appointmentsList = document.getElementById('appointmentsList');
       appointmentsList.innerHTML = '';
 
-      const q = query(collection(db, "appointments"), orderBy("timestamp", "desc"));
-      const querySnapshot = await getDocs(q);
+      const qAll = query(collection(db, "appointments"), orderBy("timestamp", "desc"));
+      const querySnapshot = await getDocs(qAll);
 
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
+      querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
         const item = document.createElement('div');
         item.className = 'appointment-item grid grid-cols-3 gap-4';
 
@@ -392,28 +646,32 @@
           <div class="appointment-time">${date}</div>
           <div class="appointment-service">${data.service}</div>
           <div class="col-span-3 flex gap-2 justify-end">
-            <button class="edit-btn px-2 py-1 bg-blue-600 rounded" data-id="${doc.id}">
+            <button class="edit-btn px-2 py-1 bg-blue-600 rounded" data-id="${docSnap.id}">
               <i class="fas fa-edit"></i>
             </button>
-            <button class="delete-btn px-2 py-1 bg-red-600 rounded" data-id="${doc.id}">
+            <button class="delete-btn px-2 py-1 bg-red-600 rounded" data-id="${docSnap.id}">
               <i class="fas fa-trash"></i>
             </button>
           </div>
         `;
 
+        // Ștergere
         item.querySelector('.delete-btn').addEventListener('click', async (e) => {
-          await deleteDoc(doc(db, "appointments", e.target.closest('button').dataset.id));
+          const docId = e.target.closest('button').dataset.id;
+          await deleteDoc(doc(db, "appointments", docId));
           showAppointments();
           generateReports();
         });
 
+        // Editare
         item.querySelector('.edit-btn').addEventListener('click', async (e) => {
-          const newDate = prompt('Noua dată (ex: "joi 15:30"):', date);
-          if(newDate) {
-            const parsedDate = parseDate(newDate);
+          const docId = e.target.closest('button').dataset.id;
+          const newDateInput = prompt('Noua dată (ex: "joi 15:30"):', date);
+          if(newDateInput) {
             try {
+              const parsedDate = parseDate(newDateInput);
               validateDateTime(parsedDate);
-              await updateDoc(doc(db, "appointments", e.target.closest('button').dataset.id), {
+              await updateDoc(doc(db, "appointments", docId), {
                 date: parsedDate.toISOString()
               });
               showAppointments();
@@ -428,230 +686,34 @@
       });
     }
 
-    function parseDate(input) {
-      const now = new Date();
-      const romanianMonths = {
-        'ianuarie': 0, 'februarie': 1, 'martie': 2, 'aprilie': 3,
-        'mai': 4, 'iunie': 5, 'iulie': 6, 'august': 7,
-        'septembrie': 8, 'octombrie': 9, 'noiembrie': 10, 'decembrie': 11
-      };
+    document.getElementById('refreshAppointments').addEventListener('click', () => {
+      showAppointments();
+      generateReports();
+    });
 
-      let finalDate = new Date(now);
-      
-      const dateMatch = input.match(/(\d{1,2})\s+(ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie)\s*(ora)?\s*(\d{1,2})?/i);
-      
-      if (dateMatch) {
-        const day = parseInt(dateMatch[1]);
-        const month = romanianMonths[dateMatch[2].toLowerCase()];
-        const year = now.getFullYear();
-        
-        finalDate.setFullYear(year, month, day);
-        
-        if (dateMatch[4]) {
-          const hours = parseInt(dateMatch[4]);
-          finalDate.setHours(hours, 0, 0, 0);
+    document.getElementById('addAppointmentBtn').addEventListener('click', async () => {
+      const name = prompt('Nume client:');
+      const dateInput = prompt('Dată și oră (ex: "joi 15:30"):');
+      const service = prompt('Serviciu:');
+
+      if(name && dateInput && service) {
+        try {
+          if(!validateName(name)) throw new Error('Nume invalid');
+          const date = parseDate(dateInput);
+          validateDateTime(date);
+          
+          if(await checkAvailability(date)) {
+            await saveAppointment(name, date, service);
+            showAppointments();
+            generateReports();
+          } else {
+            alert('Interval ocupat!');
+          }
+        } catch (error) {
+          alert(error.message);
         }
       }
-      else {
-        const weekdays = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă'];
-const weekdayMatch = input.match(new RegExp(`\\b(${weekdays.join('|')})\\b`, 'i'));
-    if (weekdayMatch) {
-      const targetDay = weekdays.findIndex(d => d === weekdayMatch[1].toLowerCase());
-      const currentDay = now.getDay();
-      let dayOffset = targetDay - currentDay;
-      if (dayOffset < 0) dayOffset += 7;
-      finalDate.setDate(now.getDate() + dayOffset);
-    }
-    else if (input.toLowerCase().includes('mâine')) {
-      finalDate.setDate(now.getDate() + 1);
-    }
-
-    const timeMatch = input.match(/(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?/i);
-    if (timeMatch) {
-      let hours = parseInt(timeMatch[1]);
-      const minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
-      const period = timeMatch[3]?.toLowerCase();
-
-      if (period === 'pm' && hours < 12) hours += 12;
-      if (period === 'am' && hours === 12) hours = 0;
-
-      finalDate.setHours(hours, minutes, 0, 0);
-    }
-  }
-
-  if (finalDate.toString() === 'Invalid Date') throw new Error('Dată invalidă');
-  
-  return finalDate;
-}
-
-async function checkAvailability(date) {
-  const start = new Date(date);
-  start.setMinutes(0, 0, 0);
-  
-  const end = new Date(date);
-  end.setMinutes(59, 59, 999);
-
-  const colRef = collection(db, "appointments");
-  const q = query(
-    colRef, 
-    where("date", ">=", start.toISOString()),
-    where("date", "<=", end.toISOString())
-  );
-  
-  const snapshot = await getDocs(q);
-  return snapshot.empty;
-}
-
-document.getElementById('toggleViewBtn').addEventListener('click', () => {
-  const password = prompt('Introdu parola admin:');
-  if(password === '1234') {
-    const adminView = document.getElementById('adminView');
-    adminView.style.display = adminView.style.display === 'none' ? 'block' : 'none';
-    if(adminView.style.display === 'block') {
-      showAppointments();
-      initCalendar();
-      generateReports();
-    }
-  } else {
-    alert('Parolă incorectă!');
-  }
-});
-
-async function handleUserMessage(text) {
-  try {
-    const name = extractUserName(text);
-    if(name) {
-      if(!validateName(name)) {
-        return "⚠️ Nume invalid. Te rog folosește doar litere și spații (2-30 caractere).";
-      }
-      localStorage.setItem('chatbotUserName', name);
-    }
-
-    const serviceMatch = text.match(/pensat|masaj sculptural bucal|îngrijire facială premium/i);
-    const date = parseDate(text);
-    
-    validateDateTime(date);
-
-    const isAvailable = await checkAvailability(date);
-    if (!isAvailable) {
-      return "⏰ Ne pare rău, intervalul este deja ocupat. Vă rugăm alegeți altă oră.";
-    }
-    
-    const saved = await saveAppointment(name, date, serviceMatch[0]);
-    if (saved) {
-      const formattedDate = date.toLocaleString('ro-RO', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      return `✅ Programare confirmată!<br><br>
-        👤 ${name}<br>
-        📅 ${formattedDate}<br>
-        💼 ${serviceMatch[0]}`;
-    }
-    
-    return await getAIChatResponse(text);
-
-  } catch (error) {
-    return `⚠️ Eroare: ${error.message}`;
-  }
-}
-
-async function saveAppointment(name, date, service) {
-  try {
-    await addDoc(collection(db, "appointments"), {
-      clientName: name,
-      date: date.toISOString(),
-      service: service.toLowerCase(),
-      timestamp: new Date().toISOString(),
-      status: "confirmed"
     });
-    return true;
-  } catch (error) {
-    console.error("Eroare salvare:", error);
-    return false;
-  }
-}
-
-function extractUserName(text) {
-  const patterns = [
-    /(?:sunt|numele\s*(meu)?\s*este?|mă\s*cheamă)\s+([A-Za-zȘșȚțÂâÎîĂă]+)/i,
-    /\b([A-ZȘȚÂĂÎ][a-zșțâîă]+)\b/
-  ];
-  
-  for (const pattern of patterns) {
-    const match = text.match(pattern);
-    if (match) {
-      const name = (match[2] || match[1]).trim();
-      return name;
-    }
-  }
-  return null;
-}
-
-async function getAIChatResponse(prompt) {
-  try {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: prompt })
-    });
-    const data = await response.json();
-    return data.reply;
-  } catch (error) {
-    return '⏳ Momentan avem dificultăți tehnice. Vă rugăm să încercați mai târziu.';
-  }
-}
-
-sendButton.addEventListener('click', async () => {
-  const text = userInput.value.trim();
-  if (!text) return;
-
-  userInput.value = '';
-  addMessage(text, true);
-
-  try {
-    const response = await handleUserMessage(text);
-    addMessage(response, false);
-  } catch (error) {
-    addMessage("⚠️ A apărut o eroare. Vă rugăm încercați din nou.", false);
-  }
-});
-
-userInput.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') sendButton.click();
-});
-
-document.getElementById('refreshAppointments').addEventListener('click', () => {
-  showAppointments();
-  generateReports();
-});
-
-document.getElementById('addAppointmentBtn').addEventListener('click', async () => {
-  const name = prompt('Nume client:');
-  const dateInput = prompt('Dată și oră (ex: "joi 15:30"):');
-  const service = prompt('Serviciu:');
-
-  if(name && dateInput && service) {
-    try {
-      if(!validateName(name)) throw new Error('Nume invalid');
-      const date = parseDate(dateInput);
-      validateDateTime(date);
-      
-      if(await checkAvailability(date)) {
-        await saveAppointment(name, date, service);
-        showAppointments();
-        generateReports();
-      } else {
-        alert('Interval ocupat!');
-      }
-    } catch (error) {
-      alert(error.message);
-    }
-  }
-});
-</script>
-</body> 
+  </script>
+</body>
 </html>
