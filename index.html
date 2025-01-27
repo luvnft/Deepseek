@@ -249,12 +249,16 @@
       Importuri Firebase 
       (asigură-te că ești conectat la internet pentru a funcționa)
     */
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
+    import { 
+      initializeApp 
+    } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
     import { 
       getFirestore, 
       collection, 
       addDoc, 
-      getDocs 
+      getDocs,
+      orderBy,
+      query
     } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
 
     // Configurație Firebase
@@ -304,7 +308,7 @@
       const currentYear  = now.getFullYear();
       const currentMonth = now.getMonth() + 1;
 
-      // Format așteptat: "28 februarie"
+      // Format așteptat: "28 februarie" (doar exemplu)
       const dateMatch = input.match(/(\d{1,2})\s+([a-zA-Z]+)/i);
       if (!dateMatch) return null;
 
@@ -318,7 +322,7 @@
 
       if (month < 1 || month > 12) return null;
 
-      // Dacă luna este în trecut față de luna curentă, folosim anul următor
+      // Dacă luna este în trecut față de luna curentă, folosește anul următor
       const year = (month < currentMonth) ? currentYear + 1 : currentYear;
 
       return new Date(year, month - 1, day);
@@ -328,8 +332,7 @@
     // Extrage nume, serviciu și data dintr-un text
     // -------------------------------------------------------------
     function extractAppointmentDetails(text) {
-      // Aici, simplu, caută patern de text
-      // Poți îmbunătăți regex-urile după cum îți trebuie
+      // Caută regex simplu
       const nameMatch    = text.match(/[a-zA-ZăâîșțĂÂÎȘȚ ]+/);
       const serviceMatch = text.match(/pensat|masaj sculptural bucal|îngrijire facială/i);
       const dateMatch    = parseDate(text);
@@ -350,7 +353,7 @@
       try {
         await addDoc(collection(db, "appointments"), {
           clientName: clientName,
-          date:       date,
+          date:       date,        // stocăm sub formă de string ISO
           service:    service,
           status:     'pending',
           timestamp:  new Date().toISOString()
@@ -363,25 +366,48 @@
     }
 
     // -------------------------------------------------------------
-    // Funcție addAppointment - folosită în butonul "Adaugă Programare" din AdminView
+    // Obține toate programările (ordonate descendent după timestamp)
     // -------------------------------------------------------------
-    async function addAppointment(clientName, date) {
-      // Aici putem alege un serviciu generic sau să cerem și serviciul
-      const service = prompt("Ce serviciu? (ex: pensat, masaj sculptural bucal, îngrijire facială)");
-      if (!service) return;
+    async function getAppointments() {
+      const q = query(collection(db, "appointments"), orderBy("timestamp", "desc"));
+      const querySnapshot = await getDocs(q);
 
-      const saved = await saveAppointment(clientName, date, service);
+      const appointments = [];
+      querySnapshot.forEach((doc) => {
+        appointments.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      return appointments;
+    }
 
-      if (saved) {
-        addMessage(`Programare salvată: ${clientName} - ${date} - ${service}`, false);
-        // Poți afișa și în secțiunea #appointmentsList
-        const appointmentsList = document.getElementById('appointmentsList');
+    // -------------------------------------------------------------
+    // Afișează programările în AdminView
+    // -------------------------------------------------------------
+    async function showAppointments() {
+      const appointmentsList = document.getElementById('appointmentsList');
+      appointmentsList.innerHTML = ''; // goliți înainte să reafișăm
+
+      const appointments = await getAppointments();
+
+      // Parcurgem și afișăm
+      appointments.forEach((apt) => {
         const item = document.createElement('div');
-        item.textContent = `Nume: ${clientName}, Data: ${date}, Serviciu: ${service}`;
+
+        // transformăm `apt.date` în formă umană
+        const dateObj = new Date(apt.date);
+        const dateStr = dateObj.toLocaleString('ro-RO', {
+          day: 'numeric', 
+          month: 'long', 
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        item.textContent = `Nume: ${apt.clientName} | Data: ${dateStr} | Serviciu: ${apt.service}`;
         appointmentsList.appendChild(item);
-      } else {
-        addMessage('Eroare la salvarea programării.', false);
-      }
+      });
     }
 
     // -------------------------------------------------------------
@@ -417,12 +443,13 @@
               false
             );
             return; // Oprim, că deja am răspuns
+          } else {
+            addMessage('Ne pare rău, a apărut o eroare la salvarea programării. ☹️', false);
+            return;
           }
         }
 
-        // Dacă nu e programare, se trimite la /api/chat (exemplu)
-        // Ai nevoie și de un endpoint /api/chat care să întoarcă { reply: "..."} 
-        // altfel va da eroare.
+        // Dacă nu e programare, se trimite la /api/chat
         const response = await fetch('/api/chat', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -434,6 +461,7 @@
         }
 
         const data = await response.json();
+        // Curățăm puțin textul primit
         addMessage(data.reply.replace(/<\/?[^>]+(>|$)/g, ""), false);
 
       } catch (error) {
@@ -466,7 +494,21 @@
       const date = prompt("Data și ora (ex: 2023-10-15 14:00):");
       if (!date) return;
 
-      await addAppointment(clientName, date);
+      const service = prompt("Ce serviciu? (ex: pensat, masaj sculptural bucal, îngrijire facială)");
+      if (!service) return;
+
+      // Poți converti data string la format ISO => new Date(date).toISOString()
+      // Aici e direct date, dacă e valid...
+      const isoDate = new Date(date).toISOString();
+
+      const saved = await saveAppointment(clientName, isoDate, service);
+      if (saved) {
+        addMessage(`Programare salvată: ${clientName} - ${date} - ${service}`, false);
+        // Reactualizezi lista
+        showAppointments();
+      } else {
+        addMessage('Eroare la salvarea programării.', false);
+      }
     });
 
     // Trimite instrucțiuni către chatbot (deocamdată doar apare în chat)
@@ -484,6 +526,7 @@
     function toggleAdminView() {
       if (adminView.style.display === 'none') {
         adminView.style.display = 'block';
+        showAppointments(); // Când se deschide, afișează toate programările
       } else {
         adminView.style.display = 'none';
       }
