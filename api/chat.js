@@ -1,3 +1,4 @@
+// api/chat.js
 export default async (req, res) => {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
@@ -5,6 +6,7 @@ export default async (req, res) => {
   }
 
   try {
+    // Prompt de sistem pentru a limita ce poate chatbot-ul să răspundă
     const systemPrompt = `
       Acționezi ca asistent virtual profesional pentru salonul de înfrumusețare Stelmina.
       Servicii disponibile:
@@ -21,10 +23,11 @@ export default async (req, res) => {
       - Dacă nu știi răspunsul, spune că vei verifica și propune contactarea telefonului salonului
     `;
 
+    // Faci un request la un model AI - exemplu: DeepSeek (sau alt provider)
     const apiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+        'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`, // ai nevoie de acest secret
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -46,12 +49,15 @@ export default async (req, res) => {
 
     const data = await apiResponse.json();
     
+    // CORS (dacă ai nevoie)
     res.setHeader('Access-Control-Allow-Origin', '*');
     
+    // Curățăm răspunsul
     const cleanReply = data.choices[0].message.content
-      .replace(/【.*?】/g, '') // Elimină markdown special
+      .replace(/【.*?】/g, '') // Elimină eventuale semne
       .trim();
 
+    // Returnăm JSON
     res.status(200).json({ reply: cleanReply });
 
   } catch (error) {
