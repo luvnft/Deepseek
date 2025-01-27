@@ -6,7 +6,13 @@ export default async (req, res) => {
   }
 
   try {
-    // Prompt de sistem: reguli pentru chatbot
+    // 1) Preluăm toată conversația (array de mesaje)
+    const { conversation } = req.body;
+    if(!conversation || !Array.isArray(conversation)) {
+      throw new Error('Lipsește array-ul conversation');
+    }
+
+    // 2) Prompt de sistem: reguli
     const systemPrompt = `
       Acționezi ca asistent virtual profesional pentru salonul Stelmina.
       Servicii disponibile:
@@ -22,7 +28,14 @@ export default async (req, res) => {
       - Dacă nu știi, spune că vei verifica
     `;
 
-    // Ex. request la un model AI (DeepSeek, OpenAI etc.)
+    // 3) Construim array-ul complet de mesaje pentru model
+    //    Adăugăm un "system" la început, apoi toată conversația user + assistant
+    const messages = [
+      { role: "system", content: systemPrompt },
+      ...conversation // user & assistant messages
+    ];
+
+    // 4) Request la un model AI (ex. DeepSeek, OpenAI etc.)
     const apiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -31,10 +44,7 @@ export default async (req, res) => {
       },
       body: JSON.stringify({
         model: 'deepseek-chat',
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: req.body.prompt }
-        ],
+        messages,
         temperature: 0.3,
         max_tokens: 150,
         top_p: 0.9,
@@ -50,7 +60,6 @@ export default async (req, res) => {
 
     res.setHeader('Access-Control-Allow-Origin', '*');
 
-    // Curățăm HTML/markdown
     const cleanReply = data.choices[0].message.content
       .replace(/<\/?[^>]+(>|$)/g, '')
       .trim();
@@ -63,7 +72,6 @@ export default async (req, res) => {
       requestBody: req.body,
       timestamp: new Date().toISOString()
     });
-    
     res.status(500).json({ 
       reply: '⏳ Momentan avem dificultăți tehnice. Vă rugăm să încercați mai târziu sau să ne contactați telefonic.'
     });
