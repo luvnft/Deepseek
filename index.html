@@ -177,7 +177,7 @@
     #appointmentsList div {
       padding: 0.25rem 0;
       border-bottom: 1px solid rgba(100,255,255,0.1);
-      color: #c8ffff; /* text turcoaz */
+      color: #c8ffff; /* cerut */
     }
   </style>
 </head>
@@ -202,9 +202,9 @@
       <div class="message bot">
         Bună! ✨ Sunt asistentul virtual al salonului Stelmina. 
         <br><br>Te rog să precizezi:<br>
-        - Numele tău <br>
-        - Data și ora dorită (ex: "28 ianuarie ora 10", "mâine la 10")<br>
-        - Serviciul (pensat, masaj sculptural bucal, îngrijire facială)
+        - Numele tău<br>
+        - Data și ora dorită (de ex. "28 ianuarie ora 10" sau "mâine la 2")<br>
+        - Serviciul (pensat, masaj sculptural bucal sau îngrijire facială)
       </div>
     </div>
 
@@ -245,27 +245,31 @@
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
+    /* 
+      Importuri Firebase 
+    */
+    import { 
+      initializeApp 
+    } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
     import { 
       getFirestore, 
       collection, 
       addDoc, 
       getDocs,
-      query,
       orderBy,
-      where
+      query
     } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
 
     // Configurație Firebase
     const firebaseConfig = {
-  apiKey: "AIzaSyBwCFGYsXp5zjWIHAcQbOmdd31e7bDN8mk",
-  authDomain: "stelmina-19617.firebaseapp.com",
-  projectId: "stelmina-19617",
-  storageBucket: "stelmina-19617.firebasestorage.app",
-  messagingSenderId: "828872692313",
-  appId: "1:828872692313:web:adc44bf28b54b26279d748",
-  measurementId: "G-FQ44LY0Y32"
-};
+      apiKey: "AIzaSyBwCFGYsXp5zjWIHAcQbOmdd31e7bDN8mk",
+      authDomain: "stelmina-19617.firebaseapp.com",
+      projectId: "stelmina-19617",
+      storageBucket: "stelmina-19617.appspot.com",
+      messagingSenderId: "828872692313",
+      appId: "1:828872692313:web:adc44bf28b54b26279d748",
+      measurementId: "G-FQ44LY0Y32"
+    };
     
     // Inițializare Firebase
     const app = initializeApp(firebaseConfig);
@@ -285,7 +289,7 @@
     let isSending = false;
 
     // -------------------------------------------------------------
-    // Afișare mesaj în chat
+    // Funcție pentru afișarea mesajului (bot/user) în chat
     // -------------------------------------------------------------
     function addMessage(text, isUser) {
       const messageDiv = document.createElement('div');
@@ -296,35 +300,33 @@
     }
 
     // -------------------------------------------------------------
-    // Parse nume - caută fraze "sunt X", "mă cheamă X", etc. (case-insensitive)
+    // Identifică un nume (ex. "Vlad", "Ana"), încercând să evite textul lung
     // -------------------------------------------------------------
     function extractUserName(text) {
-      // Ex: "sunt vlad popescu", "ma cheama ANDREEA"
-      const pattern = /\b(?:sunt|numele\s*(meu)?\s*e|mă\s*cheamă)\s+([a-zA-ZăâîșțĂÂÎȘȚ]+)/i;
-      const match   = text.match(pattern);
+      // Mai întâi caută fraze "sunt X", "numele e X", "mă cheamă X"
+      const nameRegex = /\b(?:sunt|numele\s*(meu)?\s*e|mă cheamă)\s+([A-ZȘȚÂĂÎ][a-zA-ZăâîșțĂÂÎȘȚ]+)/i;
+      const match = text.match(nameRegex);
       if (match) {
-        // Transformăm prima literă în majusculă, restul minuscul
-        const rawName = match[2];
-        return rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase();
+        return match[2].trim();
       }
 
-      // fallback: caută un cuvânt cu majusculă la început
+      // Ca fallback, caut primul cuvânt care începe cu majusculă
       const fallback = text.match(/\b[A-ZȘȚÂĂÎ][a-zA-ZăâîșțĂÂÎȘȚ]+/);
       if (fallback) {
         return fallback[0];
       }
-      return null;
+      return "Client";
     }
 
     // -------------------------------------------------------------
-    // Parsează data & ora, incluzând "mâine/poimâine"
+    // Parsează data și ora, inclusiv "mâine" / "poimâine"
     // -------------------------------------------------------------
     function parseDate(input) {
       const now = new Date();
       let finalDate = null;
       let foundAbsoluteDay = false;
 
-      // (1) Caut "28 ianuarie" (zi + lună)
+      // 1) Verificăm dacă user-ul a specificat un zi + lună (ex: "28 ianuarie")
       const dateMatch = input.match(/(\d{1,2})\s+(ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie)/i);
       if (dateMatch) {
         foundAbsoluteDay = true;
@@ -335,25 +337,26 @@
           'iulie','august','septembrie','octombrie','noiembrie','decembrie'
         ];
         let monthIndex = months.indexOf(monthName);
-        
-        // parse ora (ex: "ora 10", "la 2", "ora 14:30")
+
+        // parse oră
         let hour = 0, minute = 0;
+        // caut "ora 10", "la 10", "ora 10:30"
         const hourMatch = input.match(/(ora|la)\s*(\d{1,2})(?:[:.](\d{1,2}))?/i);
         if (hourMatch) {
-          hour   = parseInt(hourMatch[2]);
+          hour = parseInt(hourMatch[2]);
           minute = hourMatch[3] ? parseInt(hourMatch[3]) : 0;
         }
 
         let year = now.getFullYear();
         finalDate = new Date(year, monthIndex, day, hour, minute);
 
+        // Dacă data e în trecut, punem anul următor
         if (finalDate.getTime() < now.getTime()) {
-          // dacă data e în trecut, punem anul următor
           finalDate.setFullYear(year + 1);
         }
       }
 
-      // (2) Dacă nu am găsit "28 ianuarie", vedem "mâine" / "poimâine"
+      // 2) Dacă nu am găsit zi/lună, vedem dacă user-ul a zis "mâine" / "poimâine"
       if (!foundAbsoluteDay) {
         let dayOffset = 0;
         if (/\bmâine\b/i.test(input)) {
@@ -361,20 +364,20 @@
         } else if (/\bpoimâine\b/i.test(input)) {
           dayOffset = 2;
         } else {
-          // nu avem nici zi-lună, nici "mâine"/"poimâine"
+          // n-a dat "mâine", "poimâine" și nici zi/lună => nu știm data
           return null;
         }
 
         finalDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayOffset);
 
-        // parse oră
+        // parse oră (ex: "la 2", "ora 14")
         const hourMatch = input.match(/(ora|la)\s*(\d{1,2})(?:[:.](\d{1,2}))?/i);
         if (hourMatch) {
           let h = parseInt(hourMatch[2]);
           let m = hourMatch[3] ? parseInt(hourMatch[3]) : 0;
           finalDate.setHours(h, m, 0, 0);
         } else {
-          // default 10:00
+          // dacă n-a specificat oră, default 10:00 (de ex.)
           finalDate.setHours(10, 0, 0, 0);
         }
       }
@@ -383,51 +386,32 @@
     }
 
     // -------------------------------------------------------------
-    // Găsește serviciul
-    // -------------------------------------------------------------
-    function extractService(text) {
-      const serviceMatch = text.match(/pensat|masaj sculptural bucal|îngrijire facială/i);
-      return serviceMatch ? serviceMatch[0].toLowerCase() : null;
-    }
-
-    // -------------------------------------------------------------
-    // Principal: extrage (nume, serviciu, data)
+    // Extrage datele necesare (nume, serviciu, data) din text
     // -------------------------------------------------------------
     function extractAppointmentDetails(text) {
       const userName = extractUserName(text);
-      const service  = extractService(text);
-      const parsed   = parseDate(text);
-      if (!userName || !service || !parsed) {
+      const serviceMatch = text.match(/pensat|masaj sculptural bucal|îngrijire facială/i);
+      const parsedDate = parseDate(text);
+
+      if (!userName || !serviceMatch || !parsedDate) {
         return null;
       }
+
       return {
-        name:    userName,
-        service: service,
-        date:    parsed.toISOString()
+        name: userName,
+        service: serviceMatch[0].toLowerCase(),
+        date: parsedDate.toISOString()
       };
     }
 
     // -------------------------------------------------------------
-    // Verifică dacă data/ora e deja ocupată
-    // -------------------------------------------------------------
-    async function isDateAvailable(dateISO) {
-      // Căutăm programări care au exact același date
-      // (Naiv: considerăm doar egalitatea exactă)
-      const colRef = collection(db, "appointments");
-      const qRef   = query(colRef, where("date", "==", dateISO));
-      const snap   = await getDocs(qRef);
-      // Dacă snap.empty = true => nimeni la acea oră
-      return snap.empty;
-    }
-
-    // -------------------------------------------------------------
-    // Salvează o programare
+    // Salvează o programare în Firestore
     // -------------------------------------------------------------
     async function saveAppointment(clientName, dateISO, service) {
       try {
         await addDoc(collection(db, "appointments"), {
           clientName: clientName,
-          date:       dateISO,
+          date:       dateISO, // ISO
           service:    service,
           status:     'pending',
           timestamp:  new Date().toISOString()
@@ -440,12 +424,11 @@
     }
 
     // -------------------------------------------------------------
-    // Preluăm toate programările (descrescător după timestamp)
+    // Preia toate programările (ordonate descendent după timestamp)
     // -------------------------------------------------------------
     async function getAppointments() {
-      const colRef = collection(db, "appointments");
-      const qRef   = query(colRef, orderBy("timestamp", "desc"));
-      const querySnapshot = await getDocs(qRef);
+      const q = query(collection(db, "appointments"), orderBy("timestamp", "desc"));
+      const querySnapshot = await getDocs(q);
 
       const appointments = [];
       querySnapshot.forEach((doc) => {
@@ -458,15 +441,18 @@
     }
 
     // -------------------------------------------------------------
-    // Afișăm programările în AdminView
+    // Afișează programările în AdminView
     // -------------------------------------------------------------
     async function showAppointments() {
       const appointmentsList = document.getElementById('appointmentsList');
-      appointmentsList.innerHTML = '';
+      appointmentsList.innerHTML = ''; // goliți întâi
 
       const appointments = await getAppointments();
+      // Parcurgem și afișăm
       appointments.forEach((apt) => {
         const item = document.createElement('div');
+
+        // Formatare data
         const dateObj = new Date(apt.date);
         const dateStr = dateObj.toLocaleString('ro-RO', {
           day: 'numeric',
@@ -486,28 +472,22 @@
     // -------------------------------------------------------------
     async function sendMessage() {
       if (isSending) return;
+
       const rawPrompt = userInput.value.trim();
       if (!rawPrompt) return;
 
       isSending = true;
       sendButton.innerHTML = '<div class="loader"></div>';
-      sendButton.disabled  = true;
+      sendButton.disabled = true;
 
       try {
-        // Mesajul userului
+        // Afișăm mesajul userului în chat
         addMessage(rawPrompt, true);
         userInput.value = '';
 
-        // Verificăm dacă e cerere de programare
+        // Verificăm dacă e text cu detalii de programare
         const details = extractAppointmentDetails(rawPrompt);
         if (details) {
-          // 1) Verificăm disponibilitatea
-          const available = await isDateAvailable(details.date);
-          if (!available) {
-            addMessage('Ne pare rău, data și ora cerută sunt deja ocupate. Te rugăm să alegi alt interval.', false);
-            return;
-          }
-          // 2) Salvăm programarea
           const saved = await saveAppointment(details.name, details.date, details.service);
           if (saved) {
             const dateObj = new Date(details.date);
@@ -519,10 +499,10 @@
               minute: '2-digit'
             });
             addMessage(
-              `Perfect, ${details.name}! Programarea ta pentru ${details.service} pe ${niceDate} a fost înregistrată cu succes!`,
+              `Programarea ta pentru ${details.service} pe ${niceDate} a fost înregistrată cu succes!`,
               false
             );
-            return;
+            return; // Ne oprim aici, am răspuns deja
           } else {
             addMessage('Ne pare rău, a apărut o eroare la salvarea programării. ☹️', false);
             return;
@@ -549,12 +529,12 @@
       } finally {
         isSending = false;
         sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
-        sendButton.disabled  = false;
+        sendButton.disabled = false;
       }
     }
 
     // -------------------------------------------------------------
-    // Evenimente
+    // Evenimente butoane și input
     // -------------------------------------------------------------
     sendButton.addEventListener('click', sendMessage);
     userInput.addEventListener('keypress', (e) => {
@@ -564,6 +544,7 @@
       }
     });
 
+    // Admin: adăugare manuală programare
     addAppointmentBtn.addEventListener('click', async () => {
       const clientName = prompt("Nume client:");
       if (!clientName) return;
@@ -577,13 +558,6 @@
       // Convertim la ISO
       const isoDate = new Date(dateInput).toISOString();
 
-      // Verificăm disponibilitatea
-      const available = await isDateAvailable(isoDate);
-      if (!available) {
-        addMessage('Nu se poate adăuga. Acea dată/oră este deja ocupată!', false);
-        return;
-      }
-
       const saved = await saveAppointment(clientName, isoDate, service);
       if (saved) {
         addMessage(`Programare salvată: ${clientName} - ${dateInput} - ${service}`, false);
@@ -593,6 +567,7 @@
       }
     });
 
+    // Trimite instrucțiuni către chatbot (doar apare în chat deocamdată)
     sendInstructionsBtn.addEventListener('click', () => {
       const instructions = instructionsInput.value.trim();
       if (!instructions) return;
@@ -602,7 +577,7 @@
     });
 
     // -------------------------------------------------------------
-    // AdminView
+    // Afișare/Ascundere AdminView
     // -------------------------------------------------------------
     function toggleAdminView() {
       if (adminView.style.display === 'none') {
