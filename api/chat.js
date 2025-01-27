@@ -1,4 +1,4 @@
-// pages/api/chat.js (exemplu Next.js)
+// pages/api/chat.js (exemplu Next.js, cu memorie)
 export default async (req, res) => {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
@@ -6,13 +6,11 @@ export default async (req, res) => {
   }
 
   try {
-    // 1) Preluăm toată conversația (array de mesaje)
     const { conversation } = req.body;
     if(!conversation || !Array.isArray(conversation)) {
       throw new Error('Lipsește array-ul conversation');
     }
 
-    // 2) Prompt de sistem: reguli
     const systemPrompt = `
       Acționezi ca asistent virtual profesional pentru salonul Stelmina.
       Servicii disponibile:
@@ -22,20 +20,17 @@ export default async (req, res) => {
 
       Instrucțiuni stricte:
       - Răspunsuri concise în română (max. 3 propoziții)
-      - Cere nume, dată, oră, serviciu doar când utilizatorul vrea o programare
+      - Cere nume, dată, oră, serviciu doar când utilizatorul vrea programare
       - Nu inventa prețuri/servicii
       - Folosește moderat emoji (max 2)
       - Dacă nu știi, spune că vei verifica
     `;
 
-    // 3) Construim array-ul complet de mesaje pentru model
-    //    Adăugăm un "system" la început, apoi toată conversația user + assistant
     const messages = [
       { role: "system", content: systemPrompt },
-      ...conversation // user & assistant messages
+      ...conversation
     ];
 
-    // 4) Request la un model AI (ex. DeepSeek, OpenAI etc.)
     const apiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -72,6 +67,7 @@ export default async (req, res) => {
       requestBody: req.body,
       timestamp: new Date().toISOString()
     });
+    
     res.status(500).json({ 
       reply: '⏳ Momentan avem dificultăți tehnice. Vă rugăm să încercați mai târziu sau să ne contactați telefonic.'
     });
