@@ -262,30 +262,26 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // -- Chart instance for re-rendering stats --
-    let chartInstance = null;
+    let chartInstance = null; // pt re-render statistici
 
-    // -- DOM Elements --
     const chatbox       = document.getElementById('chatbox');
     const userInput     = document.getElementById('userInput');
     const sendButton    = document.getElementById('sendButton');
     const adminView     = document.getElementById('adminView');
     const toggleViewBtn = document.getElementById('toggleViewBtn');
 
-    // -- We store the user name in local storage (if they've given it once) --
     let userName = localStorage.getItem('chatbotUserName') || null;
 
     // ------------------------------------------------------
-    // 1. Chat + localStorage History
+    // 1) Istoric chat in Local Storage
     // ------------------------------------------------------
     const loadChatHistory = () => {
       const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
       history.forEach(msg => addMessage(msg.text, msg.isUser, false));
       if(history.length === 0) {
-        // Mesajul introductiv
         addMessage(
-          `Bună! ✨ Sunt asistentul virtual al salonului Stelmina.<br><br>
-           Cum te pot ajuta? (Pentru programări, menționează "programare", altfel îți pot oferi doar informații.)`,
+          `Bună! ✨ Sunt asistentul virtual al salonului Stelmina.<br>
+           Cu ce te pot ajuta astăzi?`,
           false,
           false
         );
@@ -300,7 +296,7 @@
       chatbox.appendChild(messageDiv);
       chatbox.scrollTop = chatbox.scrollHeight;
 
-      if(save) {
+      if (save) {
         const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
         history.push({ text, isUser });
         localStorage.setItem('chatHistory', JSON.stringify(history));
@@ -308,15 +304,13 @@
     }
 
     // ------------------------------------------------------
-    // 2. Validări (nume / data-ora)
+    // 2) Funcții auxiliare: validări / parse date
     // ------------------------------------------------------
     const validateName = (name) => {
-      // Nume cu litere românești și spații, 2-30 caractere
       return /^[A-Za-zȘșȚțÂâÎîĂă\s]{2,30}$/.test(name);
     };
 
     function extractUserName(text) {
-      // Încearcă întâi să extragă din formule tip "numele meu e..."
       const patterns = [
         /(?:sunt|numele\s*(meu)?\s*este?|mă\s*cheamă)\s+([A-Za-zȘșȚțÂâÎîĂă]+)/i,
         /\b([A-ZȘȚÂĂÎ][a-zșțâîă]+)\b/
@@ -331,10 +325,10 @@
       return null;
     }
 
-    const validateDateTime = (date) => {
+    function validateDateTime(date) {
       const now = new Date();
-      const minDate = new Date(now.getTime() + 30 * 60000); // minim 30 min în viitor
-      const maxDate = new Date(now.setMonth(now.getMonth() + 3)); // max 3 luni în avans
+      const minDate = new Date(now.getTime() + 30 * 60000); 
+      const maxDate = new Date(now.setMonth(now.getMonth() + 3));
       
       if(date < minDate) {
         throw new Error('Data trebuie să fie cu minim 30 de minute în viitor');
@@ -342,48 +336,38 @@
       if(date > maxDate) {
         throw new Error('Putem programa maxim 3 luni în avans');
       }
-      
       const hours = date.getHours();
       if(hours < 9 || hours >= 20) {
         throw new Error('Programăm doar între 9:00 și 20:00');
       }
       return true;
-    };
+    }
 
-    // ------------------------------------------------------
-    // 3. Parsare data/oră în stil românesc
-    // ------------------------------------------------------
     function parseDate(input) {
       const now = new Date();
-      const finalDate = new Date(now); // plecăm de la "acum"
+      const finalDate = new Date(now);
 
-      // Dicționar lună => index
       const romanianMonths = {
         'ianuarie': 0, 'februarie': 1, 'martie': 2, 'aprilie': 3,
         'mai': 4, 'iunie': 5, 'iulie': 6, 'august': 7,
         'septembrie': 8, 'octombrie': 9, 'noiembrie': 10, 'decembrie': 11
       };
 
-      // Căutăm un pattern de tipul "12 martie ora 15"
       const dateMatch = input.match(/(\d{1,2})\s+(ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie)\s*(ora)?\s*(\d{1,2})?/i);
-
       if (dateMatch) {
         const day = parseInt(dateMatch[1], 10);
         const month = romanianMonths[dateMatch[2].toLowerCase()];
         const year = now.getFullYear();
-        
         finalDate.setFullYear(year, month, day);
-        // Dacă am oră
+
         if (dateMatch[4]) {
           const hours = parseInt(dateMatch[4], 10);
           finalDate.setHours(hours, 0, 0, 0);
         }
       } else {
-        // Dacă nu avem format complet, căutăm zilele săptămânii
         const weekdays = ['duminică','luni','marți','miercuri','joi','vineri','sâmbătă'];
         const weekdayMatch = input.match(new RegExp(`\\b(${weekdays.join('|')})\\b`, 'i'));
         if (weekdayMatch) {
-          // calculăm offset față de ziua curentă
           const targetDay = weekdays.findIndex(d => d === weekdayMatch[1].toLowerCase());
           const currentDay = now.getDay();
           let dayOffset = targetDay - currentDay;
@@ -393,7 +377,6 @@
           finalDate.setDate(now.getDate() + 1);
         }
 
-        // Acum căutăm un pattern orar "HH:mm"
         const timeMatch = input.match(/(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?/i);
         if (timeMatch) {
           let hours = parseInt(timeMatch[1], 10);
@@ -414,13 +397,11 @@
     }
 
     // ------------------------------------------------------
-    // 4. Firestore: Salvează / Șterge / Update programări
+    // 3) Firestore: verificare / salvare programare
     // ------------------------------------------------------
     async function checkAvailability(date) {
-      // Creăm un interval orar (ex. 15:00 - 15:59) pentru a verifica dacă e liber
       const start = new Date(date);
       start.setMinutes(0, 0, 0);
-      
       const end = new Date(date);
       end.setMinutes(59, 59, 999);
 
@@ -430,9 +411,8 @@
         where("date", ">=", start.toISOString()),
         where("date", "<=", end.toISOString())
       );
-      
       const snapshot = await getDocs(qDate);
-      return snapshot.empty; // true => liber, false => ocupat
+      return snapshot.empty;
     }
 
     async function saveAppointment(name, date, service) {
@@ -452,20 +432,31 @@
     }
 
     // ------------------------------------------------------
-    // 5. Chat logic: decidem dacă user chiar vrea programare
+    // 4) AI Chat cu memorie
     // ------------------------------------------------------
-    function isBookingRequest(text) {
-      // Căutăm cuvinte cheie (programez, programare, vreau programare, etc.)
-      return /\b(programare|programez|rezervare|rezerv|vreau să fac programare|vreau o programare|doresc programare)\b/i.test(text);
+    // Aici extragem tot istoricul (user + bot) din localStorage și îl trimitem la /api/chat.
+    function buildConversationArray() {
+      // transformăm {text, isUser} in {role, content}
+      const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
+      const conversation = [];
+      for (const msg of history) {
+        if (msg.isUser) {
+          conversation.push({ role: 'user', content: msg.text });
+        } else {
+          conversation.push({ role: 'assistant', content: msg.text });
+        }
+      }
+      return conversation;
     }
 
-    async function getAIChatResponse(prompt) {
-      // Aici se face un fetch la endpointul /api/chat
+    async function getAIChatResponse() {
       try {
+        // Obținem întreaga conversație (fără system prompt, care e pe server)
+        const conversation = buildConversationArray();
         const response = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt })
+          body: JSON.stringify({ conversation })
         });
         const data = await response.json();
         return data.reply;
@@ -475,46 +466,43 @@
       }
     }
 
-    async function handleUserMessage(text) {
-      // 1. Verificăm dacă user chiar cere programare (conține cuvinte cheie de booking)
-      const wantsBooking = isBookingRequest(text);
+    // Facem detectarea daca user vrea programare:
+    function isBookingRequest(text) {
+      return /\b(programare|programez|rezervare|rezerv|vreau să fac programare|vreau o programare|doresc programare)\b/i.test(text);
+    }
 
-      if(!wantsBooking) {
-        // Utilizatorul doar discută/întreabă => răspuns AI
-        return await getAIChatResponse(text);
+    async function handleUserMessage(text) {
+      // Dacă user nu cere programare, doar apelăm AI (cu context)
+      if (!isBookingRequest(text)) {
+        // trimitem tot istoricul, inclusiv ultimul input, la AI
+        return await getAIChatResponse();
       }
 
-      // 2. Da, user-ul vrea programare => extragem info, validăm, salvăm
+      // User chiar vrea programare
       try {
-        // extragem numele (dacă încă nu-l aveam salvat)
         let name = extractUserName(text) || userName;
-        if(!name) {
-          // Numele e obligatoriu pentru o programare
-          return "Pentru a face o programare, am nevoie de numele tău. Mă poți anunța?";
+        if (!name) {
+          return "Am nevoie de numele tău pentru a face o programare. Mă poți anunța?";
         }
-        if(!validateName(name)) {
+        if (!validateName(name)) {
           return "⚠️ Nume invalid. Te rog folosește doar litere și spații (2-30 caractere).";
         }
         localStorage.setItem('chatbotUserName', name);
 
-        // Căutăm un serviciu cunoscut (pensat, masaj, ingrijire faciala)
         const serviceMatch = text.match(/pensat|masaj\s*sculptural|îngrijire\s*facială/i);
         if(!serviceMatch) {
-          return "Spune-mi, te rog, ce serviciu dorești? (Pensat, Masaj Sculptural, Îngrijire facială).";
+          return "Spune-mi ce serviciu dorești: Pensat, Masaj Sculptural sau Îngrijire facială?";
         }
+        const service = serviceMatch[0].toLowerCase();
 
-        const service = serviceMatch[0].toLowerCase().replace(/\s+/g, ' ');
-        // parse date
         const date = parseDate(text);
         validateDateTime(date);
 
-        // verificăm disponibilitatea
         const isAvailable = await checkAvailability(date);
         if (!isAvailable) {
           return "⏰ Ne pare rău, intervalul este deja ocupat. Vă rugăm alegeți altă oră.";
         }
 
-        // salvăm programarea
         const saved = await saveAppointment(name, date, service);
         if (saved) {
           const formattedDate = date.toLocaleString('ro-RO', {
@@ -524,46 +512,39 @@
             hour: '2-digit',
             minute: '2-digit'
           });
-          return `✅ Programare confirmată!<br><br>
+          return `✅ Programare confirmată!<br>
             👤 ${name}<br>
             📅 ${formattedDate}<br>
             💼 ${service}`;
         }
 
-        // fallback la AI doar dacă nu putem salva (rare cazuri)
-        return await getAIChatResponse(text);
+        // fallback la AI dacă e ceva eroare la salvare
+        return await getAIChatResponse();
 
       } catch (error) {
-        // Orice eroare de validare
         return `⚠️ Eroare: ${error.message}`;
       }
     }
 
     // ------------------------------------------------------
-    // 6. Evenimente butoane
+    // 5) Event Handling
     // ------------------------------------------------------
     sendButton.addEventListener('click', async () => {
       const text = userInput.value.trim();
-      if (!text) return;
+      if(!text) return;
 
       userInput.value = '';
-      addMessage(text, true);
+      addMessage(text, true); // Salvează in istoric
 
-      try {
-        const response = await handleUserMessage(text);
-        addMessage(response, false);
-      } catch (error) {
-        addMessage("⚠️ A apărut o eroare. Vă rugăm încercați din nou.", false);
-      }
+      // Bot-ul răspunde
+      const response = await handleUserMessage(text);
+      addMessage(response, false); // Mesajul bot
     });
 
     userInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') sendButton.click();
+      if(e.key === 'Enter') sendButton.click();
     });
 
-    // ------------------------------------------------------
-    // 7. Admin View: Calendar / Programări / Statistici
-    // ------------------------------------------------------
     toggleViewBtn.addEventListener('click', () => {
       const password = prompt('Introdu parola admin:');
       if(password === '1234') {
@@ -578,15 +559,15 @@
       }
     });
 
+    // ------------------------------------------------------
+    // 6) Admin + Calendar + Statistici
+    // ------------------------------------------------------
     async function fetchAppointmentsAsEvents() {
       const qAll = query(collection(db, "appointments"));
       const snapshot = await getDocs(qAll);
       return snapshot.docs.map(docA => ({
         title: `${docA.data().service} - ${docA.data().clientName}`,
-        start: docA.data().date,
-        extendedProps: {
-          client: docA.data().clientName
-        }
+        start: docA.data().date
       }));
     }
 
@@ -610,15 +591,12 @@
     async function generateReports() {
       const snapshot = await getDocs(collection(db, "appointments"));
       const servicesCount = {};
-      
       snapshot.forEach(docA => {
         const service = docA.data().service;
         servicesCount[service] = (servicesCount[service] || 0) + 1;
       });
 
-      if(chartInstance) {
-        chartInstance.destroy();
-      }
+      if(chartInstance) chartInstance.destroy();
       
       const ctx = document.getElementById('reportsChart').getContext('2d');
       chartInstance = new Chart(ctx, {
@@ -714,7 +692,6 @@
           if(!validateName(name)) throw new Error('Nume invalid');
           const date = parseDate(dateInput);
           validateDateTime(date);
-          
           if(await checkAvailability(date)) {
             await saveAppointment(name, date, service);
             showAppointments();
