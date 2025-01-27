@@ -23,11 +23,11 @@ export default async (req, res) => {
       - Dacă nu știi răspunsul, spune că vei verifica și propune contactarea telefonului salonului
     `;
 
-    // Faci un request la un model AI - exemplu: DeepSeek (sau alt provider)
+    // Aici faci request la un model AI (DeepSeek, OpenAI etc.)
     const apiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`, // ai nevoie de acest secret
+        'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`, 
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -49,15 +49,13 @@ export default async (req, res) => {
 
     const data = await apiResponse.json();
     
-    // CORS (dacă ai nevoie)
     res.setHeader('Access-Control-Allow-Origin', '*');
     
     // Curățăm răspunsul
     const cleanReply = data.choices[0].message.content
-      .replace(/【.*?】/g, '') // Elimină eventuale semne
+      .replace(/<\/?[^>]+(>|$)/g, '')
       .trim();
 
-    // Returnăm JSON
     res.status(200).json({ reply: cleanReply });
 
   } catch (error) {
