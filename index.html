@@ -262,7 +262,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    let chartInstance = null; // pt re-render statistici
+    let chartInstance = null; 
 
     const chatbox       = document.getElementById('chatbox');
     const userInput     = document.getElementById('userInput');
@@ -273,12 +273,12 @@
     let userName = localStorage.getItem('chatbotUserName') || null;
 
     // ------------------------------------------------------
-    // 1) Istoric chat in Local Storage
+    // 1) Istoric chat (localStorage)
     // ------------------------------------------------------
     const loadChatHistory = () => {
       const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
       history.forEach(msg => addMessage(msg.text, msg.isUser, false));
-      if(history.length === 0) {
+      if (history.length === 0) {
         addMessage(
           `Bună! ✨ Sunt asistentul virtual al salonului Stelmina.<br>
            Cu ce te pot ajuta astăzi?`,
@@ -296,7 +296,7 @@
       chatbox.appendChild(messageDiv);
       chatbox.scrollTop = chatbox.scrollHeight;
 
-      if (save) {
+      if(save) {
         const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
         history.push({ text, isUser });
         localStorage.setItem('chatHistory', JSON.stringify(history));
@@ -304,11 +304,9 @@
     }
 
     // ------------------------------------------------------
-    // 2) Funcții auxiliare: validări / parse date
+    // 2) Validări + parse data
     // ------------------------------------------------------
-    const validateName = (name) => {
-      return /^[A-Za-zȘșȚțÂâÎîĂă\s]{2,30}$/.test(name);
-    };
+    const validateName = (name) => /^[A-Za-zȘșȚțÂâÎîĂă\s]{2,30}$/.test(name);
 
     function extractUserName(text) {
       const patterns = [
@@ -327,7 +325,7 @@
 
     function validateDateTime(date) {
       const now = new Date();
-      const minDate = new Date(now.getTime() + 30 * 60000); 
+      const minDate = new Date(now.getTime() + 30 * 60000);
       const maxDate = new Date(now.setMonth(now.getMonth() + 3));
       
       if(date < minDate) {
@@ -346,7 +344,6 @@
     function parseDate(input) {
       const now = new Date();
       const finalDate = new Date(now);
-
       const romanianMonths = {
         'ianuarie': 0, 'februarie': 1, 'martie': 2, 'aprilie': 3,
         'mai': 4, 'iunie': 5, 'iulie': 6, 'august': 7,
@@ -357,14 +354,13 @@
       if (dateMatch) {
         const day = parseInt(dateMatch[1], 10);
         const month = romanianMonths[dateMatch[2].toLowerCase()];
-        const year = now.getFullYear();
-        finalDate.setFullYear(year, month, day);
-
+        finalDate.setFullYear(now.getFullYear(), month, day);
         if (dateMatch[4]) {
           const hours = parseInt(dateMatch[4], 10);
           finalDate.setHours(hours, 0, 0, 0);
         }
       } else {
+        // Zile săptămână
         const weekdays = ['duminică','luni','marți','miercuri','joi','vineri','sâmbătă'];
         const weekdayMatch = input.match(new RegExp(`\\b(${weekdays.join('|')})\\b`, 'i'));
         if (weekdayMatch) {
@@ -376,16 +372,14 @@
         } else if (input.toLowerCase().includes('mâine')) {
           finalDate.setDate(now.getDate() + 1);
         }
-
+        // Ora
         const timeMatch = input.match(/(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?/i);
         if (timeMatch) {
           let hours = parseInt(timeMatch[1], 10);
           const minutes = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
           const period = timeMatch[3]?.toLowerCase();
-
           if (period === 'pm' && hours < 12) hours += 12;
           if (period === 'am' && hours === 12) hours = 0;
-
           finalDate.setHours(hours, minutes, 0, 0);
         }
       }
@@ -397,7 +391,7 @@
     }
 
     // ------------------------------------------------------
-    // 3) Firestore: verificare / salvare programare
+    // 3) Firestore: checkAvailability + saveAppointment
     // ------------------------------------------------------
     async function checkAvailability(date) {
       const start = new Date(date);
@@ -412,7 +406,7 @@
         where("date", "<=", end.toISOString())
       );
       const snapshot = await getDocs(qDate);
-      return snapshot.empty;
+      return snapshot.empty; // true => liber
     }
 
     async function saveAppointment(name, date, service) {
@@ -432,26 +426,19 @@
     }
 
     // ------------------------------------------------------
-    // 4) AI Chat cu memorie
+    // 4) AI Chat cu memorie (trimitem TOT istoricul)
     // ------------------------------------------------------
-    // Aici extragem tot istoricul (user + bot) din localStorage și îl trimitem la /api/chat.
     function buildConversationArray() {
-      // transformăm {text, isUser} in {role, content}
       const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
-      const conversation = [];
-      for (const msg of history) {
-        if (msg.isUser) {
-          conversation.push({ role: 'user', content: msg.text });
-        } else {
-          conversation.push({ role: 'assistant', content: msg.text });
-        }
-      }
-      return conversation;
+      return history.map(msg => {
+        return msg.isUser 
+          ? { role: 'user', content: msg.text }
+          : { role: 'assistant', content: msg.text };
+      });
     }
 
     async function getAIChatResponse() {
       try {
-        // Obținem întreaga conversație (fără system prompt, care e pe server)
         const conversation = buildConversationArray();
         const response = await fetch('/api/chat', {
           method: 'POST',
@@ -466,85 +453,90 @@
       }
     }
 
-    // Facem detectarea daca user vrea programare:
+    // ------------------------------------------------------
+    // 5) Decide local dacă user-ul cere programare
+    // ------------------------------------------------------
     function isBookingRequest(text) {
-      return /\b(programare|programez|rezervare|rezerv|vreau să fac programare|vreau o programare|doresc programare)\b/i.test(text);
+      return /\b(programare|programez|rezerv|vreau o programare|doresc programare)\b/i.test(text);
     }
 
     async function handleUserMessage(text) {
-      // Dacă user nu cere programare, doar apelăm AI (cu context)
-      if (!isBookingRequest(text)) {
-        // trimitem tot istoricul, inclusiv ultimul input, la AI
-        return await getAIChatResponse();
+      // 1) Dacă NU e booking, chemăm AI
+      if(!isBookingRequest(text)) {
+        return await getAIChatResponse(); 
       }
 
-      // User chiar vrea programare
+      // 2) E Booking => parse logic local, salvez in Firestore
       try {
         let name = extractUserName(text) || userName;
-        if (!name) {
-          return "Am nevoie de numele tău pentru a face o programare. Mă poți anunța?";
+        if(!name) {
+          return "Am nevoie de numele tău pentru a face o programare. Cum te cheamă?";
         }
-        if (!validateName(name)) {
-          return "⚠️ Nume invalid. Te rog folosește doar litere și spații (2-30 caractere).";
+        if(!validateName(name)) {
+          return "⚠️ Nume invalid. Folosește doar litere și spații, 2-30 caractere.";
         }
         localStorage.setItem('chatbotUserName', name);
 
+        // cautam ce serviciu vrea
         const serviceMatch = text.match(/pensat|masaj\s*sculptural|îngrijire\s*facială/i);
         if(!serviceMatch) {
-          return "Spune-mi ce serviciu dorești: Pensat, Masaj Sculptural sau Îngrijire facială?";
+          return "Te rog să îmi spui ce serviciu dorești (Pensat, Masaj Sculptural, Îngrijire facială).";
         }
         const service = serviceMatch[0].toLowerCase();
 
+        // parse date (din ultimul mesaj)
         const date = parseDate(text);
         validateDateTime(date);
 
-        const isAvailable = await checkAvailability(date);
-        if (!isAvailable) {
-          return "⏰ Ne pare rău, intervalul este deja ocupat. Vă rugăm alegeți altă oră.";
+        // check disponibilitate
+        const free = await checkAvailability(date);
+        if(!free) {
+          return "⏰ Intervalul este ocupat. Alege, te rog, altă oră!";
         }
 
+        // salvăm in Firestore
         const saved = await saveAppointment(name, date, service);
-        if (saved) {
-          const formattedDate = date.toLocaleString('ro-RO', {
+        if(saved) {
+          const dateStr = date.toLocaleString('ro-RO', {
             weekday: 'long',
             day: 'numeric',
             month: 'long',
             hour: '2-digit',
             minute: '2-digit'
           });
-          return `✅ Programare confirmată!<br>
-            👤 ${name}<br>
-            📅 ${formattedDate}<br>
-            💼 ${service}`;
+          return `Programare făcută, ${name}! Te așteptăm ${dateStr} pentru ${service}.`;
+        } else {
+          // fallback la AI (doar daca e vreo eroare la save)
+          return await getAIChatResponse();
         }
 
-        // fallback la AI dacă e ceva eroare la salvare
-        return await getAIChatResponse();
-
-      } catch (error) {
-        return `⚠️ Eroare: ${error.message}`;
+      } catch (err) {
+        // Poate e dată invalidă, user nu a dat oră clară etc.
+        return `⚠️ Eroare: ${err.message}`;
       }
     }
 
     // ------------------------------------------------------
-    // 5) Event Handling
+    // 6) Event Listeners: trimitem mesaje
     // ------------------------------------------------------
     sendButton.addEventListener('click', async () => {
       const text = userInput.value.trim();
       if(!text) return;
-
+      
       userInput.value = '';
-      addMessage(text, true); // Salvează in istoric
+      addMessage(text, true);
 
-      // Bot-ul răspunde
       const response = await handleUserMessage(text);
-      addMessage(response, false); // Mesajul bot
+      addMessage(response, false);
     });
 
     userInput.addEventListener('keypress', (e) => {
       if(e.key === 'Enter') sendButton.click();
     });
 
+    // ------------------------------------------------------
+    // 7) Admin Tab + Calendar + Stats
+    // ------------------------------------------------------
     toggleViewBtn.addEventListener('click', () => {
       const password = prompt('Introdu parola admin:');
       if(password === '1234') {
@@ -559,9 +551,6 @@
       }
     });
 
-    // ------------------------------------------------------
-    // 6) Admin + Calendar + Statistici
-    // ------------------------------------------------------
     async function fetchAppointmentsAsEvents() {
       const qAll = query(collection(db, "appointments"));
       const snapshot = await getDocs(qAll);
@@ -592,8 +581,8 @@
       const snapshot = await getDocs(collection(db, "appointments"));
       const servicesCount = {};
       snapshot.forEach(docA => {
-        const service = docA.data().service;
-        servicesCount[service] = (servicesCount[service] || 0) + 1;
+        const s = docA.data().service;
+        servicesCount[s] = (servicesCount[s] || 0) + 1;
       });
 
       if(chartInstance) chartInstance.destroy();
@@ -646,7 +635,7 @@
           </div>
         `;
 
-        // Ștergere
+        // Stergere
         item.querySelector('.delete-btn').addEventListener('click', async (e) => {
           const docId = e.target.closest('button').dataset.id;
           await deleteDoc(doc(db, "appointments", docId));
