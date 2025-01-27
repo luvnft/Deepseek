@@ -454,7 +454,7 @@
       }
       else {
         const weekdays = ['duminică', 'luni', 'marți', 'miercuri', 'joi', 'vineri', 'sâmbătă'];
-const weekdayMatch = input.match(new RegExp(\\b(${weekdays.join('|')})\\b, 'i'));
+const weekdayMatch = input.match(new RegExp(`\\b(${weekdays.join('|')})\\b`, 'i'));
     if (weekdayMatch) {
       const targetDay = weekdays.findIndex(d => d === weekdayMatch[1].toLowerCase());
       const currentDay = now.getDay();
