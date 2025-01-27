@@ -6,7 +6,160 @@
     <title>Stelmina - Salon de Înfrumusețare</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        // Import Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
+
+        // Configurație Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBwCFGYsXp5zjWIHAcQbOmdd31e7bDN8mk",
+            authDomain: "stelmina-19617.firebaseapp.com",
+            projectId: "stelmina-19617",
+            storageBucket: "stelmina-19617.firebasestorage.app",
+            messagingSenderId: "828872692313",
+            appId: "1:828872692313:web:adc44bf28b54b26279d748",
+            measurementId: "G-FQ44LY0Y32"
+        };
+
+        // Inițializare Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Funcții pentru gestionarea programărilor
+        async function addAppointment(clientName, date) {
+            try {
+                await addDoc(collection(db, "appointments"), {
+                    clientName: clientName,
+                    date: date,
+                    status: 'pending'
+                });
+                console.log('Programare adăugată cu succes!');
+                loadAppointments(); // Reîncarcă programările
+            } catch (error) {
+                console.error('Eroare la adăugarea programării:', error);
+            }
+        }
+
+        async function loadAppointments() {
+            try {
+                const querySnapshot = await getDocs(collection(db, "appointments"));
+                const appointmentsList = document.getElementById('appointmentsList');
+                appointmentsList.innerHTML = ''; // Golește lista
+                querySnapshot.forEach((doc) => {
+                    const app = doc.data();
+                    const appointmentDiv = document.createElement('div');
+                    appointmentDiv.className = 'appointment p-2 bg-[rgba(32,32,64,0.3)] border border-[rgba(100,255,255,0.15)] rounded-lg mb-2';
+                    appointmentDiv.innerHTML = `
+                        <strong>${app.clientName}</strong> - ${new Date(app.date).toLocaleString()}
+                    `;
+                    appointmentsList.appendChild(appointmentDiv);
+                });
+            } catch (error) {
+                console.error('Eroare la încărcarea programărilor:', error);
+            }
+        }
+
+        // Funcții pentru chat și admin
+        const chatbox = document.getElementById('chatbox');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        const toggleViewBtn = document.getElementById('toggleViewBtn');
+        const adminView = document.getElementById('adminView');
+        const addAppointmentBtn = document.getElementById('addAppointmentBtn');
+        const instructionsInput = document.getElementById('instructionsInput');
+        const sendInstructionsBtn = document.getElementById('sendInstructionsBtn');
+
+        let isAdminView = false;
+
+        // Schimbă între client și admin
+        toggleViewBtn.addEventListener('click', () => {
+            isAdminView = !isAdminView;
+            if (isAdminView) {
+                chatbox.style.display = 'none';
+                adminView.style.display = 'block';
+                toggleViewBtn.innerHTML = '<i class="fas fa-comments mr-2"></i> Client';
+                loadAppointments(); // Încarcă programările
+            } else {
+                chatbox.style.display = 'block';
+                adminView.style.display = 'none';
+                toggleViewBtn.innerHTML = '<i class="fas fa-user-cog mr-2"></i> Admin';
+            }
+        });
+
+        // Adăugare mesaj în chat
+        function addMessage(text, isUser) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            messageDiv.textContent = text;
+            chatbox.appendChild(messageDiv);
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+
+        // Trimite mesaj
+        async function sendMessage() {
+            const prompt = userInput.value.trim();
+            if (!prompt) return;
+
+            addMessage(prompt, true);
+            userInput.value = '';
+
+            try {
+                let reply = '';
+                if (prompt.toLowerCase().includes('programare')) {
+                    const clientName = prompt("Cum te numești?");
+                    if (!clientName) return;
+
+                    const date = prompt("Data și ora (ex: 2023-10-15 14:00):");
+                    if (!date) return;
+
+                    await addAppointment(clientName, date);
+                    reply = `Programare adăugată pentru ${date}.`;
+                } else {
+                    reply = `Am primit mesajul tău: "${prompt}".`;
+                }
+
+                addMessage(reply, false);
+            } catch (error) {
+                addMessage('⚠️ Eroare de conexiune. Încearcă din nou.', false);
+            }
+        }
+
+        // Adaugă programare manuală (pentru cosmetician)
+        addAppointmentBtn.addEventListener('click', async () => {
+            const clientName = prompt("Nume client:");
+            if (!clientName) return;
+
+            const date = prompt("Data și ora (ex: 2023-10-15 14:00):");
+            if (!date) return;
+
+            await addAppointment(clientName, date);
+        });
+
+        // Trimite instrucțiuni către chatbot
+        sendInstructionsBtn.addEventListener('click', () => {
+            const instructions = instructionsInput.value.trim();
+            if (!instructions) return;
+
+            addMessage(`Instrucțiuni primite: ${instructions}`, false);
+            instructionsInput.value = '';
+        });
+
+        // Evenimente
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        let isTouchingChat = false;
+        chatbox.addEventListener('touchstart', () => isTouchingChat = true);
+        chatbox.addEventListener('touchend', () => isTouchingChat = false);
+        document.addEventListener('touchmove', (e) => {
+            if (!isTouchingChat) e.preventDefault();
+        }, { passive: false });
+    </script>
     <style>
+        /* Stilurile tale existente rămân aceleași */
         :root {
             --neon-blue: #64ffff;
             --space-black: #0a0a1a;
@@ -216,212 +369,5 @@
             </button>
         </div>
     </div>
-
-    <script>
-        // Particule pentru fundal
-        class Particle {
-            constructor(canvas, ctx) {
-                this.canvas = canvas;
-                this.ctx = ctx;
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.velocity = {
-                    x: (Math.random() - 0.5) * 0.5,
-                    y: (Math.random() - 0.5) * 0.5
-                };
-                this.radius = Math.random() * 2;
-                this.baseRadius = this.radius;
-                this.color = `rgba(100, 255, 255, ${Math.random() * 0.5})`;
-            }
-
-            draw() {
-                this.ctx.beginPath();
-                this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                this.ctx.fillStyle = this.color;
-                this.ctx.fill();
-            }
-
-            update(mouse) {
-                if (mouse.x && mouse.y) {
-                    const dx = mouse.x - this.x;
-                    const dy = mouse.y - this.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    const force = (mouse.radius || 50) / distance;
-
-                    if (distance < mouse.radius) {
-                        this.x -= force * dx;
-                        this.y -= force * dy;
-                    }
-                }
-
-                this.x += this.velocity.x;
-                this.y += this.velocity.y;
-
-                if (this.x < 0 || this.x > this.canvas.width) this.velocity.x *= -1;
-                if (this.y < 0 || this.y > this.canvas.height) this.velocity.y *= -1;
-
-                this.radius = this.baseRadius + Math.sin(Date.now() * 0.01) * 0.5;
-            }
-        }
-
-        const canvas = document.getElementById('background-canvas');
-        const ctx = canvas.getContext('2d');
-        const particles = [];
-        const mouse = { x: null, y: null, radius: 70 };
-
-        function init() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-
-            for (let i = 0; i < 150; i++) {
-                particles.push(new Particle(canvas, ctx));
-            }
-        }
-
-        function animate() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            particles.forEach((p1, i) => {
-                p1.draw();
-                p1.update(mouse);
-                
-                particles.slice(i).forEach(p2 => {
-                    const dx = p1.x - p2.x;
-                    const dy = p1.y - p2.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-
-                    if (distance < 100) {
-                        ctx.beginPath();
-                        ctx.strokeStyle = `rgba(100, 255, 255, ${0.3 - distance/100})`;
-                        ctx.lineWidth = 0.5;
-                        ctx.moveTo(p1.x, p1.y);
-                        ctx.lineTo(p2.x, p2.y);
-                        ctx.stroke();
-                    }
-                });
-            });
-
-            requestAnimationFrame(animate);
-        }
-
-        window.addEventListener('mousemove', (e) => {
-            mouse.x = e.x;
-            mouse.y = e.y;
-        });
-
-        window.addEventListener('touchmove', (e) => {
-            mouse.x = e.touches[0].clientX;
-            mouse.y = e.touches[0].clientY;
-        });
-
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            init();
-        });
-
-        init();
-        animate();
-
-        // Funcționalități pentru chat și admin
-        const chatbox = document.getElementById('chatbox');
-        const userInput = document.getElementById('userInput');
-        const sendButton = document.getElementById('sendButton');
-        const toggleViewBtn = document.getElementById('toggleViewBtn');
-        const adminView = document.getElementById('adminView');
-        const addAppointmentBtn = document.getElementById('addAppointmentBtn');
-        const appointmentsList = document.getElementById('appointmentsList');
-        const instructionsInput = document.getElementById('instructionsInput');
-        const sendInstructionsBtn = document.getElementById('sendInstructionsBtn');
-
-        let appointments = [];
-        let isAdminView = false;
-
-        // Schimbă între client și admin
-        toggleViewBtn.addEventListener('click', () => {
-            isAdminView = !isAdminView;
-            if (isAdminView) {
-                chatbox.style.display = 'none';
-                adminView.style.display = 'block';
-                toggleViewBtn.innerHTML = '<i class="fas fa-comments mr-2"></i> Client';
-            } else {
-                chatbox.style.display = 'block';
-                adminView.style.display = 'none';
-                toggleViewBtn.innerHTML = '<i class="fas fa-user-cog mr-2"></i> Admin';
-            }
-        });
-
-        // Adăugare mesaj în chat
-        function addMessage(text, isUser) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
-            messageDiv.textContent = text;
-            chatbox.appendChild(messageDiv);
-            chatbox.scrollTop = chatbox.scrollHeight;
-        }
-
-        // Trimite mesaj
-        async function sendMessage() {
-            const prompt = userInput.value.trim();
-            if (!prompt) return;
-
-            addMessage(prompt, true);
-            userInput.value = '';
-
-            try {
-                let reply = '';
-                if (prompt.toLowerCase().includes('programare')) {
-                    const date = new Date().toLocaleString();
-                    appointments.push({ client: "Client Nou", date });
-                    reply = `Programare adăugată pentru ${date}.`;
-                    renderAppointments();
-                } else {
-                    reply = `Am primit mesajul tău: "${prompt}".`;
-                }
-
-                addMessage(reply, false);
-            } catch (error) {
-                addMessage('⚠️ Eroare de conexiune. Încearcă din nou.', false);
-            }
-        }
-
-        // Adăugare programare
-        addAppointmentBtn.addEventListener('click', () => {
-            const date = new Date().toLocaleString();
-            appointments.push({ client: "Client Nou", date });
-            renderAppointments();
-        });
-
-        // Afișare programări
-        function renderAppointments() {
-            appointmentsList.innerHTML = appointments.map(app => `
-                <div class="appointment">
-                    <strong>${app.client}</strong> - ${app.date}
-                </div>
-            `).join('');
-        }
-
-        // Trimite instrucțiuni către chatbot
-        sendInstructionsBtn.addEventListener('click', () => {
-            const instructions = instructionsInput.value.trim();
-            if (!instructions) return;
-
-            addMessage(`Instrucțiuni primite: ${instructions}`, false);
-            instructionsInput.value = '';
-        });
-
-        // Evenimente
-        sendButton.addEventListener('click', sendMessage);
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
-
-        let isTouchingChat = false;
-        chatbox.addEventListener('touchstart', () => isTouchingChat = true);
-        chatbox.addEventListener('touchend', () => isTouchingChat = false);
-        document.addEventListener('touchmove', (e) => {
-            if (!isTouchingChat) e.preventDefault();
-        }, { passive: false });
-    </script>
 </body>
 </html>
