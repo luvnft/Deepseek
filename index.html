@@ -4,11 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Stelmina - Salon de Înfrumusețare</title>
-    <!-- FontAwesome + Tailwind -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- STILURI CSS PERSONALIZATE -->
     <style>
         :root {
             --neon-blue: #64ffff;
@@ -81,48 +79,39 @@
             background: linear-gradient(135deg, var(--neon-blue) 0%, #3264ff 100%);
             border: none; padding: 12px 24px; border-radius: 12px;
             color: white; cursor: pointer; transition: all 0.3s ease;
+            position: relative;
         }
-        #sendButton:hover {
+        #sendButton:hover:not(:disabled) {
             transform: scale(1.05);
             box-shadow: 0 0 20px rgba(100,255,255,0.3);
         }
-        #chatbox::-webkit-scrollbar {
-            width: 6px;
+        #sendButton:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
         }
-        #chatbox::-webkit-scrollbar-thumb {
-            background: rgba(100,255,255,0.3);
-            border-radius: 3px;
+        .loader {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #FFF;
+            border-bottom-color: transparent;
+            border-radius: 50%;
+            animation: rotation 1s linear infinite;
         }
-        #adminView {
-            display: none; padding: 1.5rem;
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
-        #adminView h2 {
-            font-size: 1.5rem; font-weight: bold;
-            color: var(--neon-blue); margin-bottom: 1rem;
-        }
-        #appointmentsList { margin-top: 1rem; }
-        .appointment {
-            background: rgba(32,32,64,0.3);
-            border: 1px solid rgba(100,255,255,0.15);
-            border-radius: 12px;
-            padding: 1rem; margin-bottom: 0.5rem;
-            color: #e0e0ff;
-        }
-        textarea {
-            width: 100%;
-            background: rgba(8,8,16,0.6);
-            border: 1px solid rgba(100,255,255,0.2);
-            color: var(--neon-blue);
-            padding: 1rem; border-radius: 12px; margin-top: 1rem;
+        .error-message {
+            color: #ff6464;
+            font-size: 0.9em;
+            margin-top: 8px;
         }
     </style>
 </head>
 <body>
-    <!-- Un canvas de fundal, dacă vrei efecte animate, altfel îl poți șterge -->
     <canvas id="background-canvas"></canvas>
 
     <div class="chat-container">
-        <!-- HEADER -->
         <div class="chat-header">
             <h1 class="text-2xl font-bold text-[#64ffff]">
                 <i class="fas fa-robot mr-2"></i>
@@ -133,14 +122,14 @@
             </button>
         </div>
 
-        <!-- ZONA DE CHAT (CLIENT) -->
         <div id="chatbox">
             <div class="message bot">
-                Bună! Sunt asistentul virtual al salonului Stelmina. Te ajut cu o programare? 🌟
+                Bună! ✨ Sunt asistentul virtual al salonului Stelmina. Cum vă pot ajuta astăzi? 
+                Vă rugăm să menționați ce serviciu doriți (manichiură, coafură, machiaj sau îngrijire facială),
+                data și ora preferată. 😊
             </div>
         </div>
 
-        <!-- ZONA DE ADMIN (ASCUNSĂ IMPLICIT) -->
         <div id="adminView">
             <h2>Gestionare Programări</h2>
             <button id="addAppointmentBtn" class="bg-[#3264ff] text-white px-4 py-2 rounded-lg">
@@ -153,98 +142,50 @@
             </button>
         </div>
 
-        <!-- INPUT PENTRU MESAJE -->
         <div class="input-area">
-            <input type="text" id="userInput" placeholder="Scrie mesajul tău...">
+            <input type="text" id="userInput" placeholder="Scrie mesajul tău..." maxlength="200">
             <button id="sendButton">
                 <i class="fas fa-paper-plane"></i>
             </button>
         </div>
     </div>
 
-    <!-- SCRIPT PRINCIPAL -->
     <script type="module">
-        // 1) Import Firebase (client side)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
 
-        // 2) Configurație Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyBwCFGYsXp5zjWIHAcQbOmdd31e7bDN8mk",
             authDomain: "stelmina-19617.firebaseapp.com",
             projectId: "stelmina-19617",
-            storageBucket: "stelmina-19617.firebasestorage.app",
+            storageBucket: "stelmina-19617.appspot.com",
             messagingSenderId: "828872692313",
             appId: "1:828872692313:web:adc44bf28b54b26279d748",
             measurementId: "G-FQ44LY0Y32"
         };
-        // Inițializare app + DB
+
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // 3) Elemente din DOM
         const chatbox = document.getElementById('chatbox');
         const userInput = document.getElementById('userInput');
         const sendButton = document.getElementById('sendButton');
-        const toggleViewBtn = document.getElementById('toggleViewBtn');
-        const adminView = document.getElementById('adminView');
-        const addAppointmentBtn = document.getElementById('addAppointmentBtn');
-        const instructionsInput = document.getElementById('instructionsInput');
-        const sendInstructionsBtn = document.getElementById('sendInstructionsBtn');
-        const appointmentsList = document.getElementById('appointmentsList');
+        let isSending = false;
 
-        let isAdminView = false;
-
-        // 4) Funcții CRUD pentru programări (în Firestore)
-        async function addAppointment(clientName, date) {
-            try {
-                await addDoc(collection(db, "appointments"), {
-                    clientName: clientName,
-                    date: date,
-                    status: 'pending'
-                });
-                console.log('Programare adăugată cu succes!');
-                loadAppointments();
-            } catch (error) {
-                console.error('Eroare la adăugarea programării:', error);
-            }
+        function sanitizeInput(text) {
+            return text
+                .replace(/[<>]/g, '')
+                .substring(0, 200);
         }
 
-        async function loadAppointments() {
-            try {
-                const querySnapshot = await getDocs(collection(db, "appointments"));
-                appointmentsList.innerHTML = '';
-                querySnapshot.forEach((doc) => {
-                    const appData = doc.data();
-                    const appointmentDiv = document.createElement('div');
-                    appointmentDiv.className = 'appointment';
-                    appointmentDiv.innerHTML = `
-                        <strong>${appData.clientName}</strong> -
-                        ${new Date(appData.date).toLocaleString()}
-                    `;
-                    appointmentsList.appendChild(appointmentDiv);
-                });
-            } catch (error) {
-                console.error('Eroare la încărcarea programărilor:', error);
-            }
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            chatbox.appendChild(errorDiv);
+            chatbox.scrollTop = chatbox.scrollHeight;
         }
 
-        // 5) Schimbă între Client și Admin
-        toggleViewBtn.addEventListener('click', () => {
-            isAdminView = !isAdminView;
-            if (isAdminView) {
-                chatbox.style.display = 'none';
-                adminView.style.display = 'block';
-                toggleViewBtn.innerHTML = '<i class="fas fa-comments mr-2"></i> Client';
-                loadAppointments(); // Arată programările când intri la Admin
-            } else {
-                chatbox.style.display = 'block';
-                adminView.style.display = 'none';
-                toggleViewBtn.innerHTML = '<i class="fas fa-user-cog mr-2"></i> Admin';
-            }
-        });
-
-        // 6) Funcții de chat
         function addMessage(text, isUser) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
@@ -254,16 +195,25 @@
         }
 
         async function sendMessage() {
-            const prompt = userInput.value.trim();
-            if (!prompt) return;
+            if (isSending) return;
+            
+            const rawPrompt = userInput.value.trim();
+            if (!rawPrompt) return;
 
-            // Afișează mesajul scris de user
-            addMessage(prompt, true);
-            userInput.value = '';
+            const prompt = sanitizeInput(rawPrompt);
+            if (prompt.length < 2) {
+                showError('Vă rugăm să introduceți un mesaj valid (minimum 2 caractere)');
+                return;
+            }
+
+            isSending = true;
+            sendButton.innerHTML = '<div class="loader"></div>';
+            sendButton.disabled = true;
 
             try {
-                // Apel la endpointul serverului (chat.js) -> /api/chat
-                // Asigură-te că /api/chat există pe server!
+                addMessage(prompt, true);
+                userInput.value = '';
+
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -271,19 +221,27 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error('Răspuns server: ' + response.statusText);
+                    throw new Error(`Eroare server: ${response.status}`);
                 }
 
                 const data = await response.json();
-                addMessage(data.reply, false);  // Afișează răspunsul DeepSeek
+                
+                if (data.reply && typeof data.reply === 'string') {
+                    addMessage(data.reply.replace(/<\/?[^>]+(>|$)/g, ""), false);
+                } else {
+                    throw new Error('Răspuns invalid de la server');
+                }
             } catch (error) {
-                console.error('Eroare la fetch:', error);
-                addMessage('⚠️ Eroare de conexiune sau server. Încearcă din nou.', false);
+                console.error('Eroare:', error);
+                showError('Eroare de conexiune. Vă rugăm să încercați din nou.');
+            } finally {
+                isSending = false;
+                sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
+                sendButton.disabled = false;
             }
         }
 
-        // 7) Event listeners
-        sendButton.addEventListener('click', sendMessage);
+       sendButton.addEventListener('click', sendMessage);
         userInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMessage();
         });
