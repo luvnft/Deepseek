@@ -32,7 +32,7 @@ export default async (req, res) => {
       ...conversation
     ];
 
-    // Exemplu: DeepSeek API
+    // Ex. DeepSeek
     const apiResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
