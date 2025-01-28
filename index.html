@@ -42,7 +42,6 @@
       z-index: 10;
     }
 
-    /* Chat Header */
     .chat-header {
       padding: 1.5rem;
       border-bottom: 1px solid rgba(100,255,255,0.1);
@@ -120,100 +119,69 @@
       transition: all 0.3s ease;
     }
 
-    #sendButton:hover:not(:disabled) {
-      transform: scale(1.05);
-      box-shadow: 0 0 20px rgba(100,255,255,0.3);
-    }
-
-    /* Admin View - more modern with Tailwind */
     #adminView {
       display: none;
       border-top: 1px solid rgba(100,255,255,0.1);
       overflow-y: auto;
-      max-height: 500px;
+      background: rgba(8,8,16,0.95);
     }
 
-    .admin-content {
-      padding: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      background: rgba(32,32,64,0.7);
-    }
-
-    .admin-card {
-      background: rgba(16,16,32,0.8);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(100,255,255,0.2);
-      border-radius: 12px;
-      padding: 1rem;
-      box-shadow: 0 0 10px rgba(100,255,255,0.1);
-    }
-
-    #appointmentsList {
-      margin-top: 1rem;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-
-    .appointment-item {
-      padding: 1rem;
-      border-bottom: 1px solid rgba(100,255,255,0.1);
+    .admin-grid {
       display: grid;
-      grid-template-columns: 1fr 2fr 1fr;
+      grid-template-columns: 2fr 1fr;
+      gap: 2rem;
+      padding: 2rem;
+    }
+
+    .admin-section {
+      background: rgba(16,16,32,0.9);
+      border: 1px solid rgba(100,255,255,0.15);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    }
+
+    .appointment-card {
+      background: rgba(24,24,48,0.9);
+      border: 1px solid rgba(100,255,255,0.1);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr) 120px;
       gap: 1rem;
       align-items: center;
-      background: rgba(16,16,32,0.6);
-      transition: background 0.3s ease;
     }
 
-    .appointment-item:hover {
-      background: rgba(32,32,64,0.3);
+    .appointment-header {
+      font-size: 0.9rem;
+      color: #64ffff;
+      margin-bottom: 0.5rem;
     }
 
-    #calendar {
-      background: rgba(16,16,32,0.8);
-      border-radius: 12px;
-      padding: 1rem;
-      margin: 1rem 0;
-      border: 1px solid rgba(100,255,255,0.2);
-      box-shadow: 0 0 10px rgba(100,255,255,0.1);
+    .appointment-data {
+      color: #e0e0ff;
+      font-weight: 500;
     }
 
     .fc-toolbar-title {
       color: #64ffff !important;
+      font-weight: 600 !important;
     }
 
-    @media (max-width: 640px) {
-      .chat-container {
-        top: 10px;
-        bottom: 10px;
-        left: 10px;
-        right: 10px;
-      }
-
-      .message {
-        max-width: 95%;
-        font-size: 14px;
-        padding: 8px;
-      }
-
-      #userInput {
-        padding: 8px;
-        font-size: 14px;
-      }
-
-      .appointment-item {
+    @media (max-width: 768px) {
+      .admin-grid {
         grid-template-columns: 1fr;
-        gap: 4px;
-        padding: 8px;
+      }
+      
+      .appointment-card {
+        grid-template-columns: 1fr;
       }
     }
   </style>
 </head>
 <body>
   <div class="chat-container">
-    <!-- Header -->
     <div class="chat-header">
       <h1 class="text-2xl font-bold text-[#64ffff] flex items-center gap-2">
         <i class="fas fa-robot"></i>
@@ -227,47 +195,37 @@
       </button>
     </div>
 
-    <!-- Chatbox -->
     <div id="chatbox"></div>
 
-    <!-- Admin Panel -->
     <div id="adminView">
-      <div class="admin-content">
-        <div class="admin-card">
+      <div class="admin-grid">
+        <div class="admin-section">
           <div id="calendar"></div>
         </div>
 
-        <h2 class="text-xl font-semibold text-[#64ffff] mt-4 flex items-center gap-2">
-          <i class="fas fa-calendar-alt"></i> Programări
-        </h2>
-
-        <div class="flex gap-4">
-          <button
-            id="addAppointmentBtn"
-            class="bg-[#3264ff] hover:bg-[#64ffff] text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2"
-          >
-            <i class="fas fa-plus"></i>Adaugă
-          </button>
-          <button
-            id="refreshAppointments"
-            class="bg-[#3264ff] hover:bg-[#64ffff] text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2"
-          >
-            <i class="fas fa-sync-alt"></i>Actualizează
-          </button>
-        </div>
-
-        <div id="appointmentsList" class="admin-card mt-4"></div>
-
-        <div class="admin-card mt-4">
-          <h3 class="text-lg font-semibold text-[#64ffff] mb-3 flex items-center gap-2">
-            <i class="fas fa-chart-pie"></i> Statistici
-          </h3>
-          <canvas id="reportsChart" class="bg-[#0a0a1a] p-4 rounded-lg"></canvas>
+        <div class="admin-section">
+          <h2 class="text-xl font-semibold text-[#64ffff] mb-4">
+            <i class="fas fa-calendar-alt mr-2"></i>Programări
+          </h2>
+          <div class="flex gap-4 mb-4">
+            <button
+              id="addAppointmentBtn"
+              class="bg-[#3264ff] hover:bg-[#64ffff] text-white px-4 py-2 rounded-lg transition-all"
+            >
+              <i class="fas fa-plus mr-2"></i>Adaugă
+            </button>
+            <button
+              id="refreshAppointments"
+              class="bg-[#3264ff] hover:bg-[#64ffff] text-white px-4 py-2 rounded-lg transition-all"
+            >
+              <i class="fas fa-sync-alt mr-2"></i>Actualizează
+            </button>
+          </div>
+          <div id="appointmentsList"></div>
         </div>
       </div>
     </div>
 
-    <!-- Input Area -->
     <div class="input-area">
       <input
         type="text"
@@ -287,7 +245,6 @@
     </div>
   </div>
 
-  <!-- Script Principal -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
     import {
@@ -303,7 +260,6 @@
       updateDoc
     } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
 
-    // -- Config Firebase --
     const firebaseConfig = {
       apiKey: "AIzaSyBwCFGYsXp5zjWIHAcQbOmdd31e7bDN8mk",
       authDomain: "stelmina-19617.firebaseapp.com",
@@ -316,22 +272,23 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    // DOM Elements
+    const elements = {
+      chatbox: document.getElementById("chatbox"),
+      userInput: document.getElementById("userInput"),
+      sendButton: document.getElementById("sendButton"),
+      adminView: document.getElementById("adminView"),
+      toggleViewBtn: document.getElementById("toggleViewBtn"),
+      appointmentsList: document.getElementById("appointmentsList"),
+      calendar: document.getElementById("calendar")
+    };
+
+    // State Management
+    let userName = localStorage.getItem("chatbotUserName") || null;
     let chartInstance = null;
 
-    // DOM refs
-    const chatbox       = document.getElementById("chatbox");
-    const userInput     = document.getElementById("userInput");
-    const sendButton    = document.getElementById("sendButton");
-    const adminView     = document.getElementById("adminView");
-    const toggleViewBtn = document.getElementById("toggleViewBtn");
-
-    // Păstrăm numele user-ului în localStorage
-    let userName = localStorage.getItem("chatbotUserName") || null;
-
-    // -------------------------------------------------------
-    // 1) Chat + localStorage
-    // -------------------------------------------------------
-    function loadChatHistory() {
+    // Chat Functions
+    function initializeChat() {
       const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
       history.forEach((msg) => addMessage(msg.text, msg.isUser, false));
       if (history.length === 0) {
@@ -343,14 +300,13 @@
         );
       }
     }
-    window.addEventListener("DOMContentLoaded", loadChatHistory);
 
     function addMessage(text, isUser, save = true) {
       const messageDiv = document.createElement("div");
       messageDiv.classList.add("message", isUser ? "user" : "bot");
       messageDiv.innerHTML = text;
-      chatbox.appendChild(messageDiv);
-      chatbox.scrollTop = chatbox.scrollHeight;
+      elements.chatbox.appendChild(messageDiv);
+      elements.chatbox.scrollTop = elements.chatbox.scrollHeight;
 
       if (save) {
         const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
@@ -359,433 +315,119 @@
       }
     }
 
-    // -------------------------------------------------------
-    // 2) Validări / Parse Date
-    // -------------------------------------------------------
-    const validateName = (name) =>
-      /^[A-Za-zȘșȚțÂâÎîĂă\s]{2,30}$/.test(name);
-
-    // Extins: detectăm inclusiv "pe numele Vlad"
-    function extractUserName(text) {
-      const patterns = [
-        /pe\s+numele\s+([A-Za-zȘșȚțÂâÎîĂă]+)/i,
-        /(?:sunt|numele\s*(meu)?\s*este?|mă\s*cheamă)\s+([A-Za-zȘșȚțÂâÎîĂă]+)/i,
-        /\b([A-ZȘȚÂĂÎ][a-zșțâîă]+)\b/
-      ];
-      for (const pattern of patterns) {
-        const match = text.match(pattern);
-        if (match) {
-          return (match[2] || match[1]).trim();
-        }
-      }
-      return null;
-    }
-
-    function validateDateTime(date) {
-      const now = new Date();
-      const minDate = new Date(now.getTime() + 30 * 60000);
-      const maxDate = new Date(now.setMonth(now.getMonth() + 3));
-
-      if (date < minDate) {
-        throw new Error("Data trebuie să fie cu minim 30 de minute în viitor");
-      }
-      if (date > maxDate) {
-        throw new Error("Putem programa maxim 3 luni în avans");
-      }
-      const hours = date.getHours();
-      if (hours < 9 || hours >= 20) {
-        throw new Error("Programăm doar între 9:00 și 20:00");
-      }
-      return true;
-    }
-
-    function parseDate(input) {
-      const now = new Date();
-      const finalDate = new Date(now);
-
-      const romanianMonths = {
-        ianuarie: 0,
-        februarie: 1,
-        martie: 2,
-        aprilie: 3,
-        mai: 4,
-        iunie: 5,
-        iulie: 6,
-        august: 7,
-        septembrie: 8,
-        octombrie: 9,
-        noiembrie: 10,
-        decembrie: 11
-      };
-
-      // Căutăm "25 ianuarie ora 10"
-      const dateMatch = input.match(
-        /(\d{1,2})\s+(ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie)(?:\s*ora)?\s*(\d{1,2})?/i
-      );
-      if (dateMatch) {
-        const day = parseInt(dateMatch[1], 10);
-        const month = romanianMonths[dateMatch[2].toLowerCase()];
-        finalDate.setFullYear(now.getFullYear(), month, day);
-        if (dateMatch[3]) {
-          const hours = parseInt(dateMatch[3], 10);
-          finalDate.setHours(hours, 0, 0, 0);
-        }
-      } else {
-        // Zilele săptămânii
-        const weekdays = [
-          "duminică",
-          "luni",
-          "marți",
-          "miercuri",
-          "joi",
-          "vineri",
-          "sâmbătă"
-        ];
-        const weekdayMatch = input.match(
-          new RegExp(`\\b(${weekdays.join("|")})\\b`, "i")
-        );
-        if (weekdayMatch) {
-          const targetDay = weekdays.findIndex(
-            (d) => d === weekdayMatch[1].toLowerCase()
-          );
-          const currentDay = now.getDay();
-          let dayOffset = targetDay - currentDay;
-          if (dayOffset < 0) dayOffset += 7;
-          finalDate.setDate(now.getDate() + dayOffset);
-        } else if (input.toLowerCase().includes("mâine")) {
-          finalDate.setDate(now.getDate() + 1);
+    // Appointment Handling
+    async function handleAppointmentCreation(text) {
+      try {
+        const name = extractUserName(text) || userName;
+        if (!name) throw new Error("Nume necesar");
+        
+        const serviceMatch = text.match(/pensat|masaj\s*sculptural|îngrijire\s*facială/i);
+        if (!serviceMatch) throw new Error("Serviciu invalid");
+        
+        const date = parseDate(text);
+        if (date < new Date()) throw new Error("Data în trecut");
+        
+        if (!(await checkAvailability(date))) {
+          throw new Error("Interval ocupat");
         }
 
-        // Căutăm ora "10", "10:30", "ora 10"
-        const timeMatch = input.match(/(?:ora\s+)?(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?/i);
-        if (timeMatch) {
-          let hours = parseInt(timeMatch[1], 10);
-          const minutes = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
-          const period = timeMatch[3]?.toLowerCase();
-          if (period === "pm" && hours < 12) hours += 12;
-          if (period === "am" && hours === 12) hours = 0;
-          finalDate.setHours(hours, minutes, 0, 0);
-        }
+        await saveAppointment(name, date, serviceMatch[0]);
+        return `✅ Programare confirmată pentru ${name} pe ${date.toLocaleString('ro-RO')}`;
+      } catch (error) {
+        return `⚠️ Eroare: ${error.message}`;
       }
-
-      if (finalDate.toString() === "Invalid Date") {
-        throw new Error("Dată invalidă");
-      }
-      return finalDate;
-    }
-
-    // -------------------------------------------------------
-    // 3) Firestore - check + save
-    // -------------------------------------------------------
-    async function checkAvailability(date) {
-      const start = new Date(date);
-      start.setMinutes(0, 0, 0);
-      const end = new Date(date);
-      end.setMinutes(59, 59, 999);
-
-      const colRef = collection(db, "appointments");
-      const qDate = query(
-        colRef,
-        where("date", ">=", start.toISOString()),
-        where("date", "<=", end.toISOString())
-      );
-      const snapshot = await getDocs(qDate);
-      return snapshot.empty; // true => liber
     }
 
     async function saveAppointment(name, date, service) {
       try {
-        await addDoc(collection(db, "appointments"), {
-          clientName: name,
+        const docRef = await addDoc(collection(db, "appointments"), {
+          clientName: name.trim(),
           date: date.toISOString(),
           service: service.toLowerCase(),
           timestamp: new Date().toISOString(),
           status: "confirmed"
         });
+        console.log('Appointment saved:', docRef.id);
         return true;
       } catch (error) {
-        console.error("Eroare salvare:", error);
-        return false;
+        console.error('Save error:', error);
+        throw error;
       }
     }
 
-    // -------------------------------------------------------
-    // 4) Chat AI cu memorie (trimitem tot istoricul)
-    // -------------------------------------------------------
-    function buildConversationArray() {
-      const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
-      return history.map((msg) =>
-        msg.isUser
-          ? { role: "user", content: msg.text }
-          : { role: "assistant", content: msg.text }
-      );
-    }
-
-    async function getAIChatResponse() {
-      try {
-        const conversation = buildConversationArray();
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ conversation })
-        });
-        const data = await response.json();
-        return data.reply;
-      } catch (error) {
-        console.error("Eroare la AI Chat:", error);
-        return "⏳ Momentan avem dificultăți tehnice. Vă rugăm să încercați mai târziu.";
-      }
-    }
-
-    // -------------------------------------------------------
-    // 5) Decizie locală: e programare sau discuție?
-    // -------------------------------------------------------
-    function isBookingRequest(text) {
-      return /\b(programare|programez|rezerv|vreau o programare|doresc programare)\b/i.test(
-        text
-      );
-    }
-
-    async function handleUserMessage(text) {
-      if (!isBookingRequest(text)) {
-        // Nu e booking => AI normal
-        return await getAIChatResponse();
-      }
-
-      // E booking => parse local data, salvăm
-      try {
-        let name = extractUserName(text) || userName;
-        if (!name) {
-          return "Am nevoie de numele tău pentru a face o programare. Cum te cheamă?";
-        }
-        if (!validateName(name)) {
-          return "⚠️ Nume invalid. Folosește doar litere și spații (2-30 caractere).";
-        }
-        localStorage.setItem("chatbotUserName", name);
-
-        // serviciu: pensat, masaj sculptural, îngrijire facială
-        const serviceMatch = text.match(
-          /pensat|masaj\s*sculptural|îngrijire\s*facială/i
-        );
-        if (!serviceMatch) {
-          return "Te rog să îmi spui ce serviciu dorești (Pensat, Masaj Sculptural, Îngrijire facială).";
-        }
-        const service = serviceMatch[0].toLowerCase();
-
-        // parse date
-        const date = parseDate(text);
-        validateDateTime(date);
-
-        // check disponibilitate
-        const isFree = await checkAvailability(date);
-        if (!isFree) {
-          return "⏰ Intervalul este ocupat. Alege, te rog, altă oră!";
-        }
-
-        // salvăm
-        const saved = await saveAppointment(name, date, service);
-        if (saved) {
-          const dateStr = date.toLocaleString("ro-RO", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-            hour: "2-digit",
-            minute: "2-digit"
-          });
-          return `Programare făcută, ${name}! Te așteptăm ${dateStr} pentru ${service}.`;
-        }
-
-        // fallback la AI
-        return await getAIChatResponse();
-      } catch (err) {
-        return `⚠️ Eroare: ${err.message}`;
-      }
-    }
-
-    // -------------------------------------------------------
-    // 6) Trimitem mesaje
-    // -------------------------------------------------------
-    sendButton.addEventListener("click", async () => {
-      const text = userInput.value.trim();
-      if (!text) return;
-
-      userInput.value = "";
-      addMessage(text, true);
-
-      const response = await handleUserMessage(text);
-      addMessage(response, false);
-    });
-
-    userInput.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        sendButton.click();
-      }
-    });
-
-    // -------------------------------------------------------
-    // 7) Admin: Calendar, Listă programări, Statistici
-    // -------------------------------------------------------
-    toggleViewBtn.addEventListener("click", () => {
-      const password = prompt("Introdu parola admin:");
-      if (password === "1234") {
-        adminView.style.display = adminView.style.display === "none" ? "block" : "none";
-        if (adminView.style.display === "block") {
-          showAppointments();
-          initCalendar();
-          generateReports();
-        }
-      } else {
-        alert("Parolă incorectă!");
-      }
-    });
-
-    async function fetchAppointmentsAsEvents() {
-      const qAll = query(collection(db, "appointments"));
-      const snapshot = await getDocs(qAll);
-      return snapshot.docs.map((docA) => ({
-        title: `${docA.data().service} - ${docA.data().clientName}`,
-        start: docA.data().date
-      }));
-    }
-
-    async function initCalendar() {
-      const calendarEl = document.getElementById("calendar");
-      const eventsData = await fetchAppointmentsAsEvents();
-      const calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: "timeGridWeek",
-        events: eventsData,
-        headerToolbar: {
-          left: "prev,next today",
-          center: "title",
-          right: "dayGridMonth,timeGridWeek,timeGridDay"
-        },
-        eventColor: "#64ffff",
-        eventTextColor: "#0a0a1a"
-      });
-      calendar.render();
-    }
-
-    async function generateReports() {
-      const snapshot = await getDocs(collection(db, "appointments"));
-      const servicesCount = {};
-
-      snapshot.forEach((docA) => {
-        const s = docA.data().service;
-        servicesCount[s] = (servicesCount[s] || 0) + 1;
-      });
-
-      if (chartInstance) chartInstance.destroy();
-
-      const ctx = document.getElementById("reportsChart").getContext("2d");
-      chartInstance = new Chart(ctx, {
-        type: "pie",
-        data: {
-          labels: Object.keys(servicesCount),
-          datasets: [
-            {
-              data: Object.values(servicesCount),
-              backgroundColor: ["#64ffff", "#3264ff", "#1a1a3a"],
-              borderColor: "#0a0a1a"
-            }
-          ]
-        }
-      });
-    }
-
+    // Admin Panel Functions
     async function showAppointments() {
-      const appointmentsList = document.getElementById("appointmentsList");
-      appointmentsList.innerHTML = "";
+      elements.appointmentsList.innerHTML = '';
+      const q = query(collection(db, "appointments"), orderBy("timestamp", "desc"));
+      const snapshot = await getDocs(q);
 
-      const qAll = query(collection(db, "appointments"), orderBy("timestamp", "desc"));
-      const querySnapshot = await getDocs(qAll);
-
-      querySnapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        const item = document.createElement("div");
-        item.className = "appointment-item";
-
-        const date = new Date(data.date).toLocaleString("ro-RO", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          hour: "2-digit",
-          minute: "2-digit"
-        });
-
-        item.innerHTML = `
-          <div class="appointment-name font-semibold text-[#64ffff]">${data.clientName}</div>
-          <div class="appointment-time">${date}</div>
-          <div class="appointment-service capitalize">${data.service}</div>
-          <div class="col-span-3 flex gap-2 justify-end mt-2">
-            <button class="edit-btn px-2 py-1 bg-blue-600 rounded text-white" data-id="${docSnap.id}">
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        const card = document.createElement('div');
+        card.className = 'appointment-card';
+        card.innerHTML = `
+          <div>
+            <div class="appointment-header">Nume</div>
+            <div class="appointment-data">${data.clientName}</div>
+          </div>
+          <div>
+            <div class="appointment-header">Dată</div>
+            <div class="appointment-data">${new Date(data.date).toLocaleString('ro-RO')}</div>
+          </div>
+          <div>
+            <div class="appointment-header">Serviciu</div>
+            <div class="appointment-data">${data.service}</div>
+          </div>
+          <div>
+            <div class="appointment-header">Status</div>
+            <div class="appointment-data text-green-400">${data.status}</div>
+          </div>
+          <div class="flex gap-2">
+            <button class="edit-btn px-3 py-2 bg-blue-600 rounded-lg" data-id="${doc.id}">
               <i class="fas fa-edit"></i>
             </button>
-            <button class="delete-btn px-2 py-1 bg-red-600 rounded text-white" data-id="${docSnap.id}">
+            <button class="delete-btn px-3 py-2 bg-red-600 rounded-lg" data-id="${doc.id}">
               <i class="fas fa-trash"></i>
             </button>
           </div>
         `;
 
-        // Ștergere
-        item.querySelector(".delete-btn").addEventListener("click", async (e) => {
-          const docId = e.target.closest("button").dataset.id;
-          await deleteDoc(doc(db, "appointments", docId));
+        card.querySelector('.delete-btn').addEventListener('click', async () => {
+          await deleteDoc(doc(db, "appointments", doc.id));
           showAppointments();
-          generateReports();
         });
 
-        // Editare
-        item.querySelector(".edit-btn").addEventListener("click", async (e) => {
-          const docId = e.target.closest("button").dataset.id;
-          const newDateInput = prompt(
-            "Noua dată (ex: joi 15:30). Momentan e:",
-            date
-          );
-          if (newDateInput) {
-            try {
-              const parsedDate = parseDate(newDateInput);
-              validateDateTime(parsedDate);
-              await updateDoc(doc(db, "appointments", docId), {
-                date: parsedDate.toISOString()
-              });
-              showAppointments();
-              generateReports();
-            } catch (error) {
-              alert(error.message);
-            }
-          }
-        });
-
-        appointmentsList.appendChild(item);
+        elements.appointmentsList.appendChild(card);
       });
     }
 
-    document.getElementById("refreshAppointments").addEventListener("click", () => {
-      showAppointments();
-      generateReports();
-    });
-
-    document.getElementById("addAppointmentBtn").addEventListener("click", async () => {
-      const name = prompt("Nume client:");
-      const dateInput = prompt('Dată și oră (ex: "joi 15:30"):');
-      const service = prompt("Serviciu (pensat / masaj sculptural / îngrijire facială):");
-
-      if (name && dateInput && service) {
-        try {
-          if (!validateName(name)) throw new Error("Nume invalid");
-          const date = parseDate(dateInput);
-          validateDateTime(date);
-          if (await checkAvailability(date)) {
-            await saveAppointment(name, date, service);
-            showAppointments();
-            generateReports();
-          } else {
-            alert("Interval ocupat!");
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      initializeChat();
+      elements.toggleViewBtn.addEventListener('click', async () => {
+        const password = prompt("Parola admin:");
+        if (password === "1234") {
+          elements.adminView.style.display = elements.adminView.style.display === 'none' ? 'block' : 'none';
+          if (elements.adminView.style.display === 'block') {
+            await showAppointments();
+            initCalendar();
           }
-        } catch (error) {
-          alert(error.message);
         }
-      }
+      });
+
+      elements.sendButton.addEventListener('click', async () => {
+        const text = elements.userInput.value.trim();
+        if (!text) return;
+
+        elements.userInput.value = '';
+        addMessage(text, true);
+
+        const response = await handleAppointmentCreation(text);
+        addMessage(response, false);
+        if (elements.adminView.style.display === 'block') {
+          await showAppointments();
+        }
+      });
     });
   </script>
 </body>
